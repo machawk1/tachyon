@@ -1,4 +1,6 @@
 $(document).ready(function(){
+ $('body').append('<p>test</p>');
+ return;
   var dtp = $('#basic_example_1');
   dtp.datetimepicker({
     altField: "#alt_example_4_alt",

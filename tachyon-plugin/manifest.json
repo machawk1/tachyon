@@ -3,7 +3,7 @@
    "name": "Tachyon - MementoWeb Plugin for Chrome",
    "version": "1.0.0",
    "background": {
-       "scripts": ["tachyon.js"],
+       "scripts": ["js/jquery-2.0.0.min.js","tachyon.js"],
        "persistent": true
    },
    "icons": { 

@@ -1,23 +1,13 @@
-/* This is used to record the state of the plugin - active or not. */
-var listenerIsActive = false;
-
+var listenerIsActive = false; // Plugin active? 
 var targetTime = "Thu, 31 May 2001 20:35:00 GMT";
 
-var mementoPrefix = "http://www.webarchive.org.uk/wayback/memento/";
+var mementoPrefix = "http://mementoproxy.lanl.gov/aggr/" //"http://www.webarchive.org.uk/wayback/memento/";
 var timegatePrefix = mementoPrefix + "timegate/";
-//
-// Redirect loop:
-//var timegatePrefix = "http://purl.org/memento/timegate/";
-// 
-// This is rather hacky, as we should be able to determine Memento status from the requests etc.
-//var mementoPrefix = "http://api.wayback.archive.org/memento/"
-//var timegatePrefix = "http://mementoproxy.lanl.gov/aggr/timegate/";
+var timemapPrefix = mementoPrefix + "timemap/link/";
 
 /* This is used to record any useful information about each tab, 
  * determined from the headers during download.
  */
-
-
 function toggleActive(tab) {
     if( listenerIsActive ) {
         listenerIsActive = false;
@@ -25,6 +15,7 @@ function toggleActive(tab) {
         chrome.browserAction.setIcon({path:"icon.png"});
         // Strip our archival prefix, redirect to live site.
         // If starts with timegatePrefix then strip that.
+        
         var original = tab.url;
         if( original.indexOf(timegatePrefix) == 0 ) {
           original = original.replace(timegatePrefix,"");
@@ -32,8 +23,8 @@ function toggleActive(tab) {
         // Else fall back on Link header.
         else {
           // Look up relevant Link header entry:
-          if( tabRels[tab.id] != undefined && tabRels[tab.id]["original"] != undefined )
-            original = tabRels[tab.id]["original"];
+         // if( tabRels[tab.id] != undefined && tabRels[tab.id]["original"] != undefined )
+         //   original = tabRels[tab.id]["original"];
         }
         console.log("Original: "+original);
         // Update if changed:
@@ -42,7 +33,7 @@ function toggleActive(tab) {
         }
     } else {
         listenerIsActive = true;
-        chrome.browserAction.setIcon({path:"icon-on.png"});
+        chrome.browserAction.setIcon({path:"icon-on-19.png"});
         chrome.browserAction.setPopup({popup: "popup.html"});
         // Refresh tab to force switch to archival version:
         chrome.tabs.reload(tab.id);
@@ -66,8 +57,8 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
     targetTime = msg.targetTime;
     chrome.tabs.getSelected(null, function(selectedTab) {
       // Update by sending back to the TimeGate with the new Target Time:
-      chrome.tabs.update(selectedTab.id, {url: 
-        timegatePrefix+(tabRels[selectedTab.id]["original"].replace("?","%3F")) });
+ //     chrome.tabs.update(selectedTab.id, {url: 
+  //      timegatePrefix+(tabRels[selectedTab.id]["original"].replace("?","%3F")) });
     });
   } else if( msg.requestTargetTime ) {
     console.log("Sending current targetTime...");
@@ -81,31 +72,18 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
  */
 chrome.webRequest.onBeforeRequest.addListener(
   function(details){
-    // Pass through if the plugin is inactive.
-    if( !listenerIsActive ) {
-      return {};
-    }
-
-    // Re-direct to the preferred TimeGate:
-    // TODO switch to allowing timegatePrefix OR Memento-Datetime header?
-    // No, must note known Mementos (based on TimeGate response) and 
-    // allow those to pass-through.
-    //console.log("TabId: "+details.tabId);
+    if( !listenerIsActive ) {return {};}// Pass through if the plugin is inactive.
+	return;
     var hasOriginal = false;
-    if( tabRels[details.tabId] != undefined && 
-          tabRels[details.tabId]["original"] != undefined ) 
+    if( 	tabRels[details.tabId] != undefined && 
+          	tabRels[details.tabId]["original"] != undefined ) 
       hasOriginal = true;
-    if( details.url.indexOf(timegatePrefix) == 0 || 
-        details.url.indexOf(mementoPrefix)  == 0 ) {
-      /*
-        || (
-            hasOriginal && 
-            (details.type == "main_frame" || details.type == "sub_frame_ARG" ) 
-          ) ) {
-  */
+    if( details.url.indexOf(timegatePrefix) == 0 || details.url.indexOf(mementoPrefix)  == 0 ) {
         return {};
     }
-    return { redirectUrl: timegatePrefix+(details.url.replace("?","%3F")) };
+    return { 
+		redirectUrl: timegatePrefix+(details.url.replace("?","%3F")) 
+    };
   },
   {
     urls: ["http://*/*", "https://*/*"]
@@ -135,21 +113,113 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
     ['requestHeaders','blocking']
  );
 
-/**
- * During download, look for the expected Link headers and store them
- * associated with the appropriate tab.
- * Data looks like:
- Link: <http://www.webarchive.org.uk/wayback/list/timebundle/http://www.webarchive.org.uk/ukwa/>;rel="timebundle", <http://www.webarchive.org.uk/ukwa/>;rel="original", <http://www.webarchive.org.uk/wayback/memento/20090313000232/http://www.webarchive.org.uk/ukwa/>;rel="first memento"; datetime="Fri, 13 Mar 2009 00:02:32 GMT", <http://www.webarchive.org.uk/wayback/memento/20100623220138/http://www.webarchive.org.uk/ukwa/>;rel="last memento"; datetime="Wed, 23 Jun 2010 22:01:38 GMT", <http://www.webarchive.org.uk/wayback/memento/20090401212218/http://www.webarchive.org.uk/ukwa/>;rel="next memento"; datetime="Wed, 01 Apr 2009 21:22:18 GMT" , <http://www.webarchive.org.uk/wayback/list/timemap/link/http://www.webarchive.org.uk/ukwa/>;rel="timemap"; type="application/link-format",<http://www.webarchive.org.uk/wayback/memento/timegate/http://www.webarchive.org.uk/ukwa/>;rel="timegate"
- * i.e. <([^>])>;rel="([^"])"
- */
-var relRegex = /<([^>]+)>;rel="([^"]+)"/g;
-var tabRels = [];
+var iconChangeTimout = null;
+var clockState = 30;
+function changeIcon(){
+	if(clockState == 45){
+		chrome.browserAction.setIcon({path:"mementoLogo-19px-30.png"});	
+		clockState = 30;	
+	}
+	else if(clockState == 30){
+		chrome.browserAction.setIcon({path:"mementoLogo-19px-37_5.png"});
+		clockState = 375;
+	}
+	else if(clockState == 375){
+		chrome.browserAction.setIcon({path:"mementoLogo-19px-45.png"});
+		clockState = 45;
+	}
+	else {return;}
+	iconChangeTimeout = setTimeout(function(){changeIcon();},1000);
+}
+
+chrome.tabs.onActivated.addListener(
+  function(activeInfo) {
+  	
+  	chrome.tabs.get(activeInfo.tabId, 
+  		function(t){
+  			var details = {};
+  			details.url = t.url;
+  			queryTimegate(details);
+  		}
+  	);
+   }
+);
+
+function queryTimegate(details){
+  if( listenerIsActive ){
+  	 $.ajax({
+  		url: timemapPrefix+details.url,
+  		beforeSend: function ( xhr ) {
+  			chrome.browserAction.setBadgeText({text: ""});
+  			clockState = 30;
+  			changeIcon();
+  		}
+  	 })
+  	 .error(function(msg){
+  	 	chrome.browserAction.setBadgeBackgroundColor({color: [255, 0, 0, 255]});
+  	 	chrome.browserAction.setBadgeText({text: "ERR"});
+  	 	chrome.browserAction.setIcon({path:"mementoLogo-19px-30.png"});
+  	 	clockState = 0;
+  	 })
+  	 .done(function( msg ) {
+  		getNumberOfMementos(msg);
+  		clearTimeout(iconChangeTimeout);
+  		clockState = 0;
+  		chrome.browserAction.setIcon({path:"mementoLogo-19px-30.png"});
+  		iconChangeTimeout = null;
+  		
+  		//oldTachyonCode(details);
+	 });
+	} //fi
+}
+
 chrome.webRequest.onHeadersReceived.addListener(
   function(details) {
+     queryTimegate(details);
+   }, //noitcnuf
+   {
+     urls:["http://*/*", "https://*/*"],
+     types:["main_frame"]
+   },
+   ["responseHeaders","blocking"]
+);
+
+//var relRegex = /<([^>]+)>;rel="([^"]+)"/g;
+
+function Memento(uriIn){
+	this.uri = uriIn;
+}
+
+//chrome.tabs.prototype here to remember the mementos array or just use message passing like a sane person
+
+function getNumberOfMementos(timemap){
+	//mementos = timemap.match(/rel="(.*?)memento"/g);
+	//console.log(mementos.length);
+	m2 = timemap.match(/<(.*)>;rel="(.*)memento"/gm);
+	var mementos = [];
+	for(var m in m2){
+		mementos.push(new Memento(m2[m].substring(1,m2[m].indexOf(">")-1)));
+	}
+//	console.log(m2);
+//	http://api.wayback.archive.org/memento/20060514123511/http://www.matkelly.com/>;rel="first memento"
+	
+	
+	var numberOfMementos = mementos.length;
+	if(numberOfMementos >= 10000){numberOfMementos = ">10k";}
+	else {numberOfMementos = ""+numberOfMementos;}
+	chrome.browserAction.setBadgeBackgroundColor({color: [0, 200, 0, 255]});
+	chrome.browserAction.setBadgeText({text: numberOfMementos});
+}
+
+
+function oldTachyonCode(details){
     tabRels[details.tabId] = {};
     var headers = details.responseHeaders;
     var isMemento = false;
-    for( var i = 0, l = headers.length; i < l; ++i ) {
+    console.log(headers.length+" headers");
+   // return;
+    /*for( var i = 0, l = headers.length; i < l; ++i ) {
+      console.log(headers[i].name+" "+headers[i].value);
       if( headers[i].name == 'Link' ) {
         while( matches = relRegex.exec(headers[i].value) ) {
           console.log("tabRels: "+matches[2]+" -> "+matches[1]);
@@ -162,26 +232,6 @@ chrome.webRequest.onHeadersReceived.addListener(
         isMemento = true;
         tabRels[details.tabId]["Memento-Datetime"] = headers[i].value;
       }
-    }
-  },
-  {
-    urls:["http://*/*", "https://*/*"],
-    types:["main_frame"]
-  },
-  ["responseHeaders","blocking"]
-);
-/**
- * Also allow Google Analytics to track if people are actually using this.
- * Only reports installations, no other details are shared.
- *
- * c.f. http://developer.chrome.com/extensions/tut_analytics.html
- */
-var _gaq = _gaq || [];
-_gaq.push(['_setAccount', 'UA-7571526-4']);
-_gaq.push(['_trackPageview']);
-
-(function() {
-  var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
-  ga.src = 'https://ssl.google-analytics.com/ga.js';
-  var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
-})();
+    } \\rof
+    */
+}
