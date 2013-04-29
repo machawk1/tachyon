@@ -1,5 +1,5 @@
 var listenerIsActive = false; // Plugin active? 
-var targetTime = "Thu, 31 May 2001 20:35:00 GMT";
+var targetTime = "Thu, 31 May 2007 20:35:00 GMT";
 
 var mementoPrefix = "http://mementoproxy.lanl.gov/aggr/" //"http://www.webarchive.org.uk/wayback/memento/";
 var timegatePrefix = mementoPrefix + "timegate/";
@@ -13,46 +13,47 @@ function toggleActive(tab) {
         listenerIsActive = false;
         chrome.browserAction.setPopup({popup: ""});
         chrome.browserAction.setIcon({path:"icon.png"});
-        // Strip our archival prefix, redirect to live site.
-        // If starts with timegatePrefix then strip that.
-        
-        var original = tab.url;
-        if( original.indexOf(timegatePrefix) == 0 ) {
-          original = original.replace(timegatePrefix,"");
-        }
-        // Else fall back on Link header.
-        else {
-          // Look up relevant Link header entry:
-         // if( tabRels[tab.id] != undefined && tabRels[tab.id]["original"] != undefined )
-         //   original = tabRels[tab.id]["original"];
-        }
-        console.log("Original: "+original);
-        // Update if changed:
-        if( original != tab.url) {
-          chrome.tabs.update(tab.id, {url: original} );
-        }
+
     } else {
         listenerIsActive = true;
         chrome.browserAction.setIcon({path:"icon-on-19.png"});
         chrome.browserAction.setPopup({popup: "popup.html"});
-        // Refresh tab to force switch to archival version:
         chrome.tabs.reload(tab.id);
     }
 }
 
-function enableTimeTravel() {
-
-}
-
 chrome.browserAction.onClicked.addListener(toggleActive);
+var timeTravel = false;
 
 chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
+  if(msg.method == "getMementosForCurrentTab"){
+	  chrome.tabs.getSelected(null, function(selectedTab) {
+		  sendResponse({mementos: mementos[selectedTab.id], uri: selectedTab.url});
+	  });
+	  return true;
+  }
+  
+  if(msg.method == "setDate"){
+	  //timeTravel = true;
+	 // chrome.tabs.reload();
+	//alert(timegatePrefix+(selectedTab.url));
+	 //alert('setdate'+timegatePrefix+selectedTab.url);
+	 //chrome.tabs.reload();
+	 console.log("setting date");
+	 targetTime = msg.tt;
+	 //console.log(msg.timegatePrefix+(selectedTab.url));
+	 chrome.tabs.getSelected(null, function(selectedTab) {
+	   chrome.tabs.update(selectedTab.id,{url:timegatePrefix+(selectedTab.url)});
+    })
+  }
+  
+  /*
   if (msg.disengageTimeGate) {
     console.log("Disengage TimeGate...");
     chrome.tabs.getSelected(null, function(selectedTab) {
       toggleActive(selectedTab);
     });
-  } else if( msg.setTargetTime ) {
+  }if( msg.setTargetTime ) {
     console.log("Setting date "+msg.targetTime);
     targetTime = msg.targetTime;
     chrome.tabs.getSelected(null, function(selectedTab) {
@@ -63,7 +64,7 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
   } else if( msg.requestTargetTime ) {
     console.log("Sending current targetTime...");
     chrome.extension.sendMessage({showTargetTime: true, targetTime: targetTime });
-  }
+  }*/
 });
 
 /**
@@ -71,19 +72,19 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
  * The actual Datetime request is handled later (see below).
  */
 chrome.webRequest.onBeforeRequest.addListener(
+  
   function(details){
-    if( !listenerIsActive ) {return {};}// Pass through if the plugin is inactive.
-	return;
-    var hasOriginal = false;
-    if( 	tabRels[details.tabId] != undefined && 
-          	tabRels[details.tabId]["original"] != undefined ) 
-      hasOriginal = true;
-    if( details.url.indexOf(timegatePrefix) == 0 || details.url.indexOf(mementoPrefix)  == 0 ) {
-        return {};
-    }
-    return { 
-		redirectUrl: timegatePrefix+(details.url.replace("?","%3F")) 
-    };
+    if( !listenerIsActive) {return {};}// Pass through if the plugin is inactive.
+	console.log("webrequest");
+	
+	//redirectUrl: timegatePrefix+(details.url.replace("?","%3F")) 
+	//console.log(timegatePrefix+(details.url) );
+	//alert(timegatePrefix+(details.url) );
+	//return {cancel: true};
+	//alert(JSON.stringify(details));
+	//return {cancel: true};
+	redirectUrl: timegatePrefix+(details.url) 
+
   },
   {
     urls: ["http://*/*", "https://*/*"]
@@ -91,20 +92,18 @@ chrome.webRequest.onBeforeRequest.addListener(
   ["blocking"]
 );
 
+//curl -I -H "Accept-Datetime: Sat, 03 Oct 2009 10:00:00 GMT" http://mementoproxy.lanl.gov/aggr/timegate/http://www.cnn.com/
+
 /**
  * This modifies the request headers, adding in the desire Datetime.
  */
 chrome.webRequest.onBeforeSendHeaders.addListener(
-    function(details) {
-        // Pass through if the plugin is inactive.
-        if( !listenerIsActive ) {
+    function(details ) {
+        if( !listenerIsActive) { // Pass through if the plugin is inactive.
           return {requestHeaders: details.requestHeaders};
         }
         // Push in the Accept-Datetime header:
-        details.requestHeaders.push( 
-            { name: "Accept-Datetime", 
-              value: targetTime }
-        );
+        details.requestHeaders.push( { name: "Accept-Datetime", value: targetTime });
         return {requestHeaders: details.requestHeaders};
     },
     {
@@ -139,6 +138,7 @@ chrome.tabs.onActivated.addListener(
   		function(t){
   			var details = {};
   			details.url = t.url;
+  			details.tabId = activeInfo.tabId;
   			queryTimegate(details);
   		}
   	);
@@ -146,6 +146,15 @@ chrome.tabs.onActivated.addListener(
 );
 
 function queryTimegate(details){
+  if(details.url.indexOf("archive.org") != -1){	//we're viewing a memento now
+	  chrome.browserAction.setBadgeText({text: ""});
+	  if(clockState == 0){ //start the animation
+		clockState = 30;
+		changeIcon();
+	  }
+  	  return;
+  }
+  
   if( listenerIsActive ){
   	 $.ajax({
   		url: timemapPrefix+details.url,
@@ -162,11 +171,13 @@ function queryTimegate(details){
   	 	clockState = 0;
   	 })
   	 .done(function( msg ) {
-  		getNumberOfMementos(msg);
+  		getNumberOfMementos(msg,details.tabId);
   		clearTimeout(iconChangeTimeout);
   		clockState = 0;
   		chrome.browserAction.setIcon({path:"mementoLogo-19px-30.png"});
   		iconChangeTimeout = null;
+  		
+  		
   		
   		//oldTachyonCode(details);
 	 });
@@ -175,6 +186,20 @@ function queryTimegate(details){
 
 chrome.webRequest.onHeadersReceived.addListener(
   function(details) {
+    strh = "";
+  	var isatimegate = false;
+  	for(h in details.responseHeaders){
+  	
+  	 if(details.responseHeaders[h].name == "Vary" && details.responseHeaders[h].value.indexOf("accept-datetime") != -1){
+  	  isatimegate = true;
+  	 }else if(details.responseHeaders[h].name == "Link"){
+  	 	alert(details.responseHeaders[h].value);
+  	 	alert(details.url);
+  	 }
+  	}
+     if(isatimegate){
+     	return;// {cancel: true;}
+     }
      queryTimegate(details);
    }, //noitcnuf
    {
@@ -184,32 +209,37 @@ chrome.webRequest.onHeadersReceived.addListener(
    ["responseHeaders","blocking"]
 );
 
-//var relRegex = /<([^>]+)>;rel="([^"]+)"/g;
 
+
+//var relRegex = /<([^>]+)>;rel="([^"]+)"/g;
+var mementos = []; //array of memento objects
 function Memento(uriIn){
 	this.uri = uriIn;
 }
 
+
 //chrome.tabs.prototype here to remember the mementos array or just use message passing like a sane person
 
-function getNumberOfMementos(timemap){
+function getNumberOfMementos(timemap,tabId){
 	//mementos = timemap.match(/rel="(.*?)memento"/g);
 	//console.log(mementos.length);
 	m2 = timemap.match(/<(.*)>;rel="(.*)memento"/gm);
-	var mementos = [];
+	mementos[tabId] = [];
 	for(var m in m2){
-		mementos.push(new Memento(m2[m].substring(1,m2[m].indexOf(">")-1)));
+		mementos[tabId].push(new Memento(m2[m].substring(1,m2[m].indexOf(">")-1)));
 	}
 //	console.log(m2);
 //	http://api.wayback.archive.org/memento/20060514123511/http://www.matkelly.com/>;rel="first memento"
 	
 	
-	var numberOfMementos = mementos.length;
+	var numberOfMementos = mementos[tabId].length;
 	if(numberOfMementos >= 10000){numberOfMementos = ">10k";}
 	else {numberOfMementos = ""+numberOfMementos;}
 	chrome.browserAction.setBadgeBackgroundColor({color: [0, 200, 0, 255]});
 	chrome.browserAction.setBadgeText({text: numberOfMementos});
 }
+
+
 
 
 function oldTachyonCode(details){
