@@ -1,4 +1,4 @@
-The [new Memento-draft](http://tools.ietf.org/html/draft-vandesompel-memento-07) has a simple stateless program flow. All memento clients should have a set of test cases to ensure that the correct behavior is being exhibited. The list of clients thus far are tachywon, mcurl, and MementoFox. mcurl is in-development and the author, Ahmed AlSum has proposed some examples. Below is an attempt at formalizing these examples into test cases. Some EBNF or grammar ought to be established eventually but this is a start.
+The [new Memento-draft](http://tools.ietf.org/html/draft-vandesompel-memento-07) has a simple stateless program flow. All memento clients should have a set of test cases to ensure that the correct behavior is being exhibited. The list of clients thus far are tachywon, mcurl, and MementoFox. mcurl is in-development and the author, Ahmed AlSum has [proposed some examples](https://github.com/machawk1/tachyon/blob/master/mementoclient-test-basis.txt). Below is an attempt at formalizing these examples into test cases. Some EBNF or grammar ought to be established eventually but this is a start.
 
 General Grammar Definition. "*" means optional
 
