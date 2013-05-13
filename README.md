@@ -36,7 +36,6 @@ All Modes
 * Badge colour indicates duration since last archival crawl. Red for none.
 * Badge number indicates number of known archival snapshots.
 * The main button pop-up shows a TimeGate selector.
-* Use a fancy dynamic icon? http://smus.com/dynamic-icons-chrome-extensions/
 
 Can the interaction be smoother? Say we click on an instance that has a Memento-Datetime, and we are not in Time Travel mode, we should really switch to Time Travel mode using that new Memento-Datetime. However, can we automatically switch out of it, based on how the URL is entered? Do we need tab-scoped Time Travel to make this work?
 
