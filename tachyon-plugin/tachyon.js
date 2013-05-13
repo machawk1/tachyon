@@ -13,7 +13,7 @@ function toggleActive(tab) {
         listenerIsActive = false;
         chrome.browserAction.setPopup({popup: ""});
         chrome.browserAction.setIcon({path:"icon.png"});
-
+		iconChangeTimout = null;
     } else {
         listenerIsActive = true;
         chrome.browserAction.setIcon({path:"icon-on-19.png"});
@@ -41,7 +41,13 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 	 chrome.tabs.getSelected(null, function(selectedTab) {
 	   console.log("START:");
 	   console.log("GET URI-Q ("+timegatePrefix+(selectedTab.url)+") with Accept-Datetime value "+msg.tt)
-	   var URI_Q = timegatePrefix+(selectedTab.url);
+	   
+	   //hard-coding is no way to go, as it will fail when mementos aren't from api.wayback.archive.org
+	   // this was done to remedy the second query, which has the below prepended to the URI, which is prepended by timegateprefix
+	   // e.g. "http://mementoproxy.lanl.gov/aggr/timegate/http://api.wayback.archive.org/memento/201301010101/http://matkelly.com"
+	   var targetURL = selectedTab.url.replace(/http:\/\/api\.wayback\.archive\.org\/memento\/[0-9]+\//,"");
+	   
+	   var URI_Q = timegatePrefix+(targetURL);
 	   mementoStart(URI_Q);
 	   
 	   function mementoStart(URI_Q){
@@ -75,7 +81,7 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 				URI_R = ""; console.log("URI-R = blank");
 				var responseFromURIQA3XX = (response.status >= 300 && response.status < 400);
 				console.log("resp3xx: "+responseFromURIQA3XX);
-				if(responseFromURIQA3XX){follow();}
+				if(responseFromURIQA3XX){follow(response);}
 				else {console.log("Success");}
 			}else {
 				test2(response);
@@ -85,7 +91,7 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 		function test2(response){
 			var responseFromURIQA3XX = (response.status >= 300 && response.status < 400);
 			console.log("resp3xx: "+responseFromURIQA3XX);
-			if(responseFromURIQA3XX){follow();}
+			if(responseFromURIQA3XX){follow(response);}
 			else {test3(response);}
 		}
 		
@@ -107,7 +113,11 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 			}
 		}
 		
-	   chrome.tabs.update(selectedTab.id,{url:timegatePrefix+(selectedTab.url)});
+		function follow(response){
+		
+		}
+		
+	   	chrome.tabs.update(selectedTab.id,{url:URI_Q});
     })
   }
   
@@ -117,6 +127,7 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
     chrome.tabs.getSelected(null, function(selectedTab) {
       toggleActive(selectedTab);
     });
+    iconChangeTimout = null;
     chrome.browserAction.setBadgeText({text: ""});
   }
   
@@ -144,7 +155,7 @@ chrome.webRequest.onBeforeRequest.addListener(
   
   function(details){
     if( !listenerIsActive) {return {};}// Pass through if the plugin is inactive.
-	console.log("webrequest");
+	
 	redirectUrl: timegatePrefix+(details.url.replace("?","%3F")) 
 	//return {cancel: true};
 	//redirectUrl: timegatePrefix+(details.url) 
@@ -241,7 +252,6 @@ function queryTimegate(details){
   		iconChangeTimeout = null;
   		
   		
-  		
   		//oldTachyonCode(details);
 	 });
 	} //fi
@@ -252,19 +262,16 @@ chrome.webRequest.onHeadersReceived.addListener(
     strh = "";
   	var isatimegate = false;
   	var tg_flag = false;
-  	var uri_r;
   	console.log(details);
 
   	for(h in details.responseHeaders){
-  	 if(details.responseHeaders[h].name == "Vary" && details.responseHeaders[h].value.indexOf("accept-datetime") != -1){
-
-  	  isatimegate = true;
-  	  tg_flag = true;
-  	  //uri-r = 
-  	 }else if(details.responseHeaders[h].name == "Link"){
-  	 //	alert(details.responseHeaders[h].value);
-  	 //	alert(details.url);
-  	 }
+  	  if(details.responseHeaders[h].name == "Vary" && details.responseHeaders[h].value.indexOf("accept-datetime") != -1){
+  	    isatimegate = true;
+  	    tg_flag = true;
+  	  }else if(details.responseHeaders[h].name == "Link"){
+  	    //	alert(details.responseHeaders[h].value);
+  	    //	alert(details.url);
+  	  }
   	}
      if(isatimegate){
      	return;// {cancel: true;}
