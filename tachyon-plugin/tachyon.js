@@ -43,6 +43,8 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 	 targetTime = msg.tt;
 	 //console.log(msg.timegatePrefix+(selectedTab.url));
 	 chrome.tabs.getSelected(null, function(selectedTab) {
+	   console.log("START:");
+	   console.log("GET URI-Q ("+timegatePrefix+(selectedTab.url)+") with Accept-Datetime value "+msg.tt)
 	   chrome.tabs.update(selectedTab.id,{url:timegatePrefix+(selectedTab.url)});
     })
   }
@@ -193,8 +195,8 @@ chrome.webRequest.onHeadersReceived.addListener(
   	 if(details.responseHeaders[h].name == "Vary" && details.responseHeaders[h].value.indexOf("accept-datetime") != -1){
   	  isatimegate = true;
   	 }else if(details.responseHeaders[h].name == "Link"){
-  	 	alert(details.responseHeaders[h].value);
-  	 	alert(details.url);
+  	 //	alert(details.responseHeaders[h].value);
+  	 //	alert(details.url);
   	 }
   	}
      if(isatimegate){

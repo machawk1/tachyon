@@ -76,14 +76,17 @@ $(document).ready(function(){
     changeYear: true,
     showButtonPanel: false
   });
-  //return;
-  //
+  
+
   $('#set_target_time').click(function (){ 
-  	//alert('trigger');
-  	console.log("setting date before");
-    chrome.runtime.sendMessage({method: "setDate", tt: dtp.val() });//dtp.val() 
+  	var dt = dtp.val();
+  	if(dt.indexOf("GMT") == -1){ //datepicker does not appear to be include timezone, temp patch
+  		dt+= " GMT";
+  	}
+
+    chrome.runtime.sendMessage({method: "setDate", tt: dt });
     //self.close();
-    console.log("Setting date after");
+    //console.log("Setting date after");
   });
   //$('#disable_timetravel').click(function (){ 
   //  chrome.extension.sendMessage({disengageTimeGate: true});
