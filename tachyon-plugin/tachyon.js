@@ -34,17 +34,79 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
   }
   
   if(msg.method == "setDate"){
-	  //timeTravel = true;
-	 // chrome.tabs.reload();
-	//alert(timegatePrefix+(selectedTab.url));
-	 //alert('setdate'+timegatePrefix+selectedTab.url);
-	 //chrome.tabs.reload();
-	 console.log("setting date");
+	 timeTravel = true;
+
 	 targetTime = msg.tt;
-	 //console.log(msg.timegatePrefix+(selectedTab.url));
+
 	 chrome.tabs.getSelected(null, function(selectedTab) {
 	   console.log("START:");
 	   console.log("GET URI-Q ("+timegatePrefix+(selectedTab.url)+") with Accept-Datetime value "+msg.tt)
+	   var URI_Q = timegatePrefix+(selectedTab.url);
+	   mementoStart(URI_Q);
+	   
+	   function mementoStart(URI_Q){
+		   $.ajax({
+			type:"HEAD",
+			url:URI_Q
+		   }).done(test0)
+		   .fail(function() { console.log("error"); })
+		   .always(function() { console.log("complete"); });
+		}
+	  var TG_FLAG;
+	  function test0(message,text,response){
+			console.log("Vary: "+response.getResponseHeader('Vary'));		
+			var containsVaryAcceptDatetime = (response.getResponseHeader('Vary') != null);
+
+			console.log("TEST-0");
+			console.log("Response from URI-Q contain Vary: accept-datetime?"+containsVaryAcceptDatetime);
+			if(containsVaryAcceptDatetime){
+				TG_FLAG = true; console.log("TG-FLAG = TRUE");
+				URI_R = URI_Q; console.log("URI-R = URI-Q");
+			}
+			test1(response);
+		}
+		
+		function test1(response){
+			console.log("TEST-1");
+			var uriQIsAMemento = (response.getResponseHeader('Memento-Datetime') != null);
+			console.log("URI-Q is a Memento?"+uriQIsAMemento);
+			if(uriQIsAMemento){
+				TG_FLAG = false; console.log("TG-FLAG = FALSE");
+				URI_R = ""; console.log("URI-R = blank");
+				var responseFromURIQA3XX = (response.status >= 300 && response.status < 400);
+				console.log("resp3xx: "+responseFromURIQA3XX);
+				if(responseFromURIQA3XX){follow();}
+				else {alert("Success!");}
+			}else {
+				test2(response);
+			}
+		}
+		
+		function test2(response){
+			var responseFromURIQA3XX = (response.status >= 300 && response.status < 400);
+			console.log("resp3xx: "+responseFromURIQA3XX);
+			if(responseFromURIQA3XX){follow();}
+			else {test3(response);}
+		}
+		
+		function test3(response){
+		   if(TG_FLAG && response.status >= 400 && response.status < 600){
+		   	alert("TimeGate or Memento error. How does the user agent handle this?");
+		   }else {
+		   	test4(response);
+		   }
+		}
+		
+		function test4(response){
+			console.log("test4 unimplemented");
+			var responseHasTimegateLinkPointingAtURI_G = false;
+			if(responseHasTimegateLinkPointingAtURI_G){
+				TG_FLAG = true;
+				URI_R = URI_Q;
+		
+			}
+		}
+		
 	   chrome.tabs.update(selectedTab.id,{url:timegatePrefix+(selectedTab.url)});
     })
   }
@@ -68,6 +130,8 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
     chrome.extension.sendMessage({showTargetTime: true, targetTime: targetTime });
   }*/
 });
+
+
 
 /**
  * This takes the url of any request and redirects it to the TimeGate.
@@ -190,10 +254,16 @@ chrome.webRequest.onHeadersReceived.addListener(
   function(details) {
     strh = "";
   	var isatimegate = false;
+  	var tg_flag = false;
+  	var uri_r;
+  	console.log(details);
+
   	for(h in details.responseHeaders){
-  	
   	 if(details.responseHeaders[h].name == "Vary" && details.responseHeaders[h].value.indexOf("accept-datetime") != -1){
+
   	  isatimegate = true;
+  	  tg_flag = true;
+  	  //uri-r = 
   	 }else if(details.responseHeaders[h].name == "Link"){
   	 //	alert(details.responseHeaders[h].value);
   	 //	alert(details.url);
