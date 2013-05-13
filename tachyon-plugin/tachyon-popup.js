@@ -80,6 +80,10 @@ $(document).ready(function(){
 
   $('#set_target_time').click(function (){ 
   	var dt = dtp.val();
+  	if(dt.indexOf(":") == -1){//time didn't come through from datepicker, append default
+  		dt+= " 00:00:00";
+  	}
+  	
   	if(dt.indexOf("GMT") == -1){ //datepicker does not appear to be include timezone, temp patch
   		dt+= " GMT";
   	}

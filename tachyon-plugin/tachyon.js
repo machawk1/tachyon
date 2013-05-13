@@ -142,15 +142,9 @@ chrome.webRequest.onBeforeRequest.addListener(
   function(details){
     if( !listenerIsActive) {return {};}// Pass through if the plugin is inactive.
 	console.log("webrequest");
-	
-	//redirectUrl: timegatePrefix+(details.url.replace("?","%3F")) 
-	//console.log(timegatePrefix+(details.url) );
-	//alert(timegatePrefix+(details.url) );
+	redirectUrl: timegatePrefix+(details.url.replace("?","%3F")) 
 	//return {cancel: true};
-	//alert(JSON.stringify(details));
-	//return {cancel: true};
-	redirectUrl: timegatePrefix+(details.url) 
-
+	//redirectUrl: timegatePrefix+(details.url) 
   },
   {
     urls: ["http://*/*", "https://*/*"]
