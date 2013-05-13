@@ -76,7 +76,7 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 				var responseFromURIQA3XX = (response.status >= 300 && response.status < 400);
 				console.log("resp3xx: "+responseFromURIQA3XX);
 				if(responseFromURIQA3XX){follow();}
-				else {alert("Success!");}
+				else {console.log("Success");}
 			}else {
 				test2(response);
 			}
@@ -111,13 +111,16 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
     })
   }
   
-  /*
+  
   if (msg.disengageTimeGate) {
     console.log("Disengage TimeGate...");
     chrome.tabs.getSelected(null, function(selectedTab) {
       toggleActive(selectedTab);
     });
-  }if( msg.setTargetTime ) {
+    chrome.browserAction.setBadgeText({text: ""});
+  }
+  
+  /*if( msg.setTargetTime ) {
     console.log("Setting date "+msg.targetTime);
     targetTime = msg.targetTime;
     chrome.tabs.getSelected(null, function(selectedTab) {

@@ -92,10 +92,10 @@ $(document).ready(function(){
     //self.close();
     //console.log("Setting date after");
   });
-  //$('#disable_timetravel').click(function (){ 
-  //  chrome.extension.sendMessage({disengageTimeGate: true});
-  //  self.close();
-  //});
+  $('#disable_timetravel').click(function (){ 
+    chrome.extension.sendMessage({disengageTimeGate: true});
+    self.close();
+  });
   
   // Request the latest time:
   //chrome.extension.sendMessage({requestTargetTime: true});
