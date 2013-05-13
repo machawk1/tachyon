@@ -17,7 +17,6 @@ Should be possible to bundle it via http://portableapps.com/apps/internet/google
 * TODO Add a UI to support navigation between mementos.
 * TODO Check for memory leak. Clear data associated with tab when it closes.
 * TODO Use http://www.mementoweb.org/tools/validator/ to CI Wayback itself?
-* TODO 19x19 icons please.
 
 In Normal Browsing Mode
 * Page Action popup summarises crawls over time, and redirects to historical versions (necessarily switching to Time Travel mode?)
