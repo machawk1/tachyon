@@ -114,10 +114,10 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 		}
 		
 		function follow(response){
-		
+			console.log("follow");
 		}
 		
-	   	chrome.tabs.update(selectedTab.id,{url:URI_Q});
+	   	//chrome.tabs.update(selectedTab.id,{url:URI_Q});
     })
   }
   
@@ -155,6 +155,8 @@ chrome.webRequest.onBeforeRequest.addListener(
   
   function(details){
     if( !listenerIsActive) {return {};}// Pass through if the plugin is inactive.
+	//filter invalid "URIs"
+	if(details.url.indexOf("chrome://") != -1){return {};}
 	
 	redirectUrl: timegatePrefix+(details.url.replace("?","%3F")) 
 	//return {cancel: true};
@@ -207,9 +209,11 @@ function changeIcon(){
 
 chrome.tabs.onActivated.addListener(
   function(activeInfo) {
-  	
+	//exclude invalid URIs from entering the TimeGate fetching procedure
+    	
   	chrome.tabs.get(activeInfo.tabId, 
   		function(t){
+			if(t.url.indexOf("chrome://") != -1){return;}
   			var details = {};
   			details.url = t.url;
   			details.tabId = activeInfo.tabId;
