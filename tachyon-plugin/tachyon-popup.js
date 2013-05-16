@@ -1,9 +1,9 @@
 $(document).ready(function(){
   chrome.runtime.sendMessage({method: "getMementosForCurrentTab"}, function(response) {
-	  var dates = extraMementosDatetimesFromMementos(response.mementos);
+	  var dates = extractMementosDatetimesFromMementos(response.mementos);
 	  var dropdownOptions = "\n\t<option value=\""+response.uri+"\">live</option>";
 	  for(var m=dates.length-1; m>=0; m--){
-		  dropdownOptions = dropdownOptions+"\n\t<option value=\""+response.mementos[m].uri+"\">"+dates[m].toString()+"</option>";
+		  dropdownOptions = dropdownOptions+"\n\t<option title=\""+extractMementosDatetimeFromURI(response.mementos[m].uri)+"\"value=\""+response.mementos[m].uri+"\">"+dates[m].toString()+"</option>";
 	  }
 	  
 	  
@@ -90,21 +90,28 @@ $(document).ready(function(){
 
     chrome.runtime.sendMessage({method: "setDate", tt: dt });
     //self.close();
-    //console.log("Setting date after");
   });
   $('#disable_timetravel').click(function (){ 
     chrome.extension.sendMessage({disengageTimeGate: true});
     self.close();
   });
   
-  // Request the latest time:
-  //chrome.extension.sendMessage({requestTargetTime: true});
-  //chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
-  //  if (msg.showTargetTime) {
-  //    console.log("Showing date "+msg.targetTime);
-  //    dtp.datetimepicker('setDate', msg.targetTime);
-  //  }
-  //});
+  chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
+    if (msg.method == "updateDropDown") {
+      console.log("Updating dropdown with datetime "+msg.datetime);
+	  $("body").append(msg.mCollection);
+	
+      $("body").append("<p>"+msg.datetime+"</p>");
+      $("#availableMementos option").each(function(i,e){
+		  if($(e).attr("title") == msg.datetime){
+			  $("#availableMementos").attr('selectedIndex',i);
+		  }else{
+			  console.log($(e).attr("title")+" != "+msg.datetime);
+		  }
+	  });
+
+    }
+  });
 
 });
 
@@ -119,7 +126,12 @@ function makeDateFromDatetime(mDateStr){
 	return new Date(year,month,day,hour,minute,second);
 }
 
-function extraMementosDatetimesFromMementos(mementosAry){
+function extractMementosDatetimeFromURI(uri){
+	var datetime = uri.match(/[0-9]{14}/)[0];
+	return datetime;
+}
+
+function extractMementosDatetimesFromMementos(mementosAry){
 	datetimes = [];
 	for(var m=0; m<mementosAry.length; m++){
 		var datetime = (mementosAry[m].uri.match(/[0-9]{14}/))[0];

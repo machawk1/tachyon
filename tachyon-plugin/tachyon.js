@@ -111,10 +111,7 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 			var responseFromURIQA3XX = (response.status >= 300 && response.status < 400);
 			console.log(" Is response from URI-Q a 3xx: "+responseFromURIQA3XX+" "+response.status);
 			if(responseFromURIQA3XX){follow(response);}
-			else {
-				console.log("Success");
-				chrome.tabs.update(selectedTab.id,{url: URI_Q});
-			}
+			else {displayMemento();}
 			console.log("URI-Q: "+URI_Q);
 		}else {
 			console.log("Go to TEST-2");
@@ -148,21 +145,41 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 			mementoStart();
 		}
 	
-	
+		function getNextPrevMementos(linkHeader){
+			var temporalMarkings = linkHeader.match(/<(.*?)[0-9]{14}(.*?)>;rel=(.*?)datetime="(.*?)"/g);
+			var mCollection = new MementoCollection();
+			for(var m=1; m<temporalMarkings.length; m++){
+				var uri = temporalMarkings[m].match(/<(.*)>/);
+				uri = uri[1];
+				//console.log(uri);
+				var rel = temporalMarkings[m].match(/rel="(.*)";/);
+				rel = rel[1];
+				//console.log(rel);
+				var memento = new Memento(uri);
+				if(rel.indexOf("last") > -1){mCollection.last = memento;}
+				else if(rel.indexOf("first") > -1){mCollection.first = memento;}
+				else if(rel.indexOf("prev") > -1){mCollection.prev = memento;}
+				else if(rel.indexOf("next") > -1){mCollection.next = memento;}
+			}
+			return mCollection;
+		}
+		
+		var mCollection = null;
 		
 		function test1(response){
 			console.log("-------------\nTEST-1\n-------------");
 			var uriQIsAMemento = (response.getResponseHeader('Memento-Datetime') != null);
 			console.log("URI-Q is a Memento? "+uriQIsAMemento+" "+response.getResponseHeader('Memento-Datetime'));
 			if(uriQIsAMemento){
+				mCollection = getNextPrevMementos(response.getResponseHeader("Link"));
+				
 				TG_FLAG = false; console.log("  Setting TG-FLAG = FALSE");
 				URI_R = ""; console.log("  Setting URI-R = blank");
 				var responseFromURIQA3XX = (response.status >= 300 && response.status < 400);
 				console.log(" Is response from URI-Q a 3xx: "+responseFromURIQA3XX+" "+response.status);
 				if(responseFromURIQA3XX){follow(response);}
 				else {
-					console.log("Success");
-					chrome.tabs.update(selectedTab.id,{url: URI_Q});
+					displayMemento();
 				}
 				
 				
@@ -201,6 +218,18 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 			}
 		}
 		
+		function displayMemento(){
+			console.log("Success");
+			chrome.tabs.update(selectedTab.id,{url: URI_Q});
+			updatePopupTime();
+		}
+		
+		function updatePopupTime(){
+			dateMatch = URI_Q.match(/[0-9]{14}/);
+			dateMatch = dateMatch[0];
+			chrome.extension.sendMessage({method: 'updateDropDown',datetime: dateMatch, mCollection: mCollection });
+			console.log(dateMatch);
+		}
 		
 		
 	   	//chrome.tabs.update(selectedTab.id,{url:URI_Q});
@@ -394,6 +423,14 @@ var mementos = []; //array of memento objects
 function Memento(uriIn){
 	this.uri = uriIn;
 }
+
+function MementoCollection(){
+	this.next = null;
+	this.prev = null;
+	this.first = null;
+	this.last = null;
+}
+
 
 
 //chrome.tabs.prototype here to remember the mementos array or just use message passing like a sane person
