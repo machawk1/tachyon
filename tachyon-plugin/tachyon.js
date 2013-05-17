@@ -41,14 +41,16 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 	 chrome.tabs.getSelected(null, function(selectedTab) {
 		 
 	   console.log("-------------\nSTART:\n-------------");
-	   console.log("HEAD URI-Q ("+timegatePrefix+(selectedTab.url)+") with Accept-Datetime value "+msg.tt)
+	   //console.log("HEAD URI-Q ("+timegatePrefix+(selectedTab.url)+") with Accept-Datetime value "+msg.tt)
+	   console.log("HEAD URI-Q ("+(selectedTab.url)+") with Accept-Datetime value "+msg.tt)
 	   
 	   //hard-coding is no way to go, as it will fail when mementos aren't from api.wayback.archive.org
 	   // this was done to remedy the second query, which has the below prepended to the URI, which is prepended by timegateprefix
 	   // e.g. "http://mementoproxy.lanl.gov/aggr/timegate/http://api.wayback.archive.org/memento/201301010101/http://matkelly.com"
 	   var targetURL = selectedTab.url.replace(/http:\/\/api\.wayback\.archive\.org\/memento\/[0-9]+\//,"");
 	   
-	   var URI_Q = timegatePrefix+(targetURL);
+	   //var URI_Q = timegatePrefix+(targetURL);
+	   var URI_Q = targetURL;
 	   mementoStart();
 	   
 	   function mementoStart(){
@@ -210,6 +212,7 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 		}
 		
 		function test4(response){
+			console.log("-------------\nTEST-4\n-------------");
 			console.log("test4 unimplemented");
 			
 			//get link HTTP header, parse out rel="timegate", if it exists, set boolean on next line (hard-coded for now)
@@ -396,7 +399,7 @@ function queryTimegate(details){
 	} //fi
 }
 
-chrome.webRequest.onHeadersReceived.addListener(
+/*chrome.webRequest.onHeadersReceived.addListener(
   function(details) {
     strh = "";
   	var isatimegate = false;
@@ -416,13 +419,13 @@ chrome.webRequest.onHeadersReceived.addListener(
      	return;// {cancel: true;}
      }
      queryTimegate(details);
-   }, //noitcnuf
-   {
-     urls:["http://*/*", "https://*/*"],
-     types:["main_frame"]
-   },
-   ["responseHeaders","blocking"]
-);
+   }, //noitcnuf*/
+ //  {
+ //    urls:["http://*/*", "https://*/*"],
+ //    types:["main_frame"]
+ //  },
+ //  ["responseHeaders","blocking"]
+//);*/
 
 
 

@@ -1,5 +1,6 @@
 $(document).ready(function(){
   chrome.runtime.sendMessage({method: "getMementosForCurrentTab"}, function(response) {
+	  if(!(response.mementos)){console.log(response);$("#datePickerUI, #topui").effect("fade","slow"); $("#loading").hide();return;}
 	  var dates = extractMementosDatetimesFromMementos(response.mementos);
 	  var dropdownOptions = "\n\t<option value=\""+response.uri+"\">live</option>";
 	  for(var m=dates.length-1; m>=0; m--){
@@ -62,7 +63,7 @@ $(document).ready(function(){
      
   });
  
- 
+  console.log("Setting up datepicker");
   var dtp = $('#datepicker');
   dtp.datetimepicker({
     altField: "#alt_example_4_alt",
@@ -95,6 +96,7 @@ $(document).ready(function(){
     chrome.extension.sendMessage({disengageTimeGate: true});
     self.close();
   });
+  $('#runTests').click(runTests);
   
   chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
     if (msg.method == "updateDropDown") {
@@ -139,4 +141,53 @@ function extractMementosDatetimesFromMementos(mementosAry){
 		datetimes.push(mDate);
 	}
 	return datetimes;
+}
+
+function TestCase(){
+	this.initialURIQ = null;
+	this.acceptDatetime = null;
+	this.timegate = null;
+	this.expected = null;
+	this.description = null;
+	this.run = function(){
+		
+	};
+}
+
+var start = "S";
+var follow = "F";
+var test0 = "0";
+var test1 = "1";
+var test2 = "2";
+var test3 = "3";
+var test4 = "4";
+
+function runTests(){
+	//TEST1
+	var test1 = new TestCase();
+	test1.description = "Calling an original resource with the default timegate";
+	test1.initialURIQ = "http://www.cnn.com";
+	test1.acceptDatetime = "Sun, 23 July 2006 12:00:00 GMT";
+	test1.expected =
+		start +
+		test0 +
+		test1 +
+		test2 +
+		follow + 
+		start + 
+		test0 +
+		test1;
+	
+	var test3 = new TestCase();
+	test3.description = "Calling an original resource with a specific timegate";
+	test3.initialURIQ = "http://www.cnn.com";
+	test3.timegate = "http://mementoproxy.lanl.gov/aggr/timegate/";
+	test3.expected =
+		start +
+		follow +
+		"";
+		
+	var test_respondWithOwnTimegate = new TestCase();
+	test_respondWithOwnTimegate.description = "Access URI-Q with Link header containing timegate";
+		
 }

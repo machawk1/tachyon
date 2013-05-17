@@ -89,4 +89,12 @@ $("#timegate").change(function(){
     }
 });
 
+//http://testcase.rubyforge.org/articles/simple-case
+//also, http://pivotal.github.io/jasmine/
+var Test = TestCase.create({
+  name: 'Calling an original resource with the default timegate',
 
+  testFoo: function() {
+    this.assert(true);
+  }
+});
