@@ -54,8 +54,16 @@ for(var o in options){
 $("#timegate").prepend(sstr);
 
 function resetToDefaultTimegate(){
-	localStorage['timegates'] = "http://mementoproxy.lanl.gov/aggr/\n";
-	localStorage['preferredTimegate'] = "http://mementoproxy.lanl.gov/aggr/\n";
+	localStorage['timegates'] = 
+		"http://mementoproxy.lanl.gov/aggr/\n"+
+		"http://mementoproxy.cs.odu.edu/aggr/\n"
+		
+		
+		;
+	localStorage['preferredTimegate'] = 
+		"http://mementoproxy.lanl.gov/aggr/\n"
+		"http://mementoproxy.cs.odu.edu/aggr/\n"
+	;
 	chrome.tabs.reload();
 }
 

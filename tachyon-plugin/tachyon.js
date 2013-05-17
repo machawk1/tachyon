@@ -39,6 +39,7 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 	 targetTime = msg.tt;
 
 	 chrome.tabs.getSelected(null, function(selectedTab) {
+		 
 	   console.log("-------------\nSTART:\n-------------");
 	   console.log("HEAD URI-Q ("+timegatePrefix+(selectedTab.url)+") with Accept-Datetime value "+msg.tt)
 	   
@@ -210,11 +211,18 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 		
 		function test4(response){
 			console.log("test4 unimplemented");
+			
+			//get link HTTP header, parse out rel="timegate", if it exists, set boolean on next line (hard-coded for now)
 			var responseHasTimegateLinkPointingAtURI_G = false;
+			URI_G = "http://api.wayback.archive.org/memento/timegate/"+URI_Q;
+			
+			TG_FLAG = true;
+			URI_R = URI_Q;
 			if(responseHasTimegateLinkPointingAtURI_G){
-				TG_FLAG = true;
-				URI_R = URI_Q;
-		
+				URI_Q = URI_G;
+			}else {
+				URI_Q = localStorage["preferredTimegate"];
+				mementoStart();
 			}
 		}
 		
