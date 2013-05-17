@@ -213,10 +213,14 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 		
 		function test4(response){
 			console.log("-------------\nTEST-4\n-------------");
-			console.log("test4 unimplemented");
 			
 			//get link HTTP header, parse out rel="timegate", if it exists, set boolean on next line (hard-coded for now)
-			var responseHasTimegateLinkPointingAtURI_G = false;
+			console.log(response.getResponseHeader("Link"));
+			var responseHasTimegateLinkPointingAtURI_G = 
+				response.getResponseHeader("Link") != null &&
+				response.getResponseHeader("Link").match(/rel=(.*)timegate/) != null;
+			console.log(response.getResponseHeader("Link").match(/rel=(.*)timegate/));
+			console.log(response.getResponseHeader("Link").match(/rel=(.*)timegate/) != null);
 			URI_G = "http://api.wayback.archive.org/memento/timegate/"+URI_Q;
 			
 			TG_FLAG = true;
