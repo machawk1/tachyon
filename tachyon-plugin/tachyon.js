@@ -69,7 +69,10 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 				test0_redirect();
 				return;
 			} 		  
-			var containsVaryAcceptDatetime = (response.getResponseHeader('Vary') != null) && (response.getResponseHeader('Vary') != "null");
+			var containsVaryAcceptDatetime = 
+				(response.getResponseHeader('Vary') != null) && 
+				(response.getResponseHeader('Vary') != "null") &&
+				(response.getResponseHeader('Vary').toUpperCase().indexOf("ACCEPT-DATETIME") > -1);
 			console.log("-------------\nTEST-0\n-------------");
 			console.log("Response from URI-Q contain Vary: accept-datetime? "+containsVaryAcceptDatetime);
 			console.log(response.getAllResponseHeaders());
@@ -194,6 +197,7 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 		}
 		
 		function test2(response){
+			console.log("-------------\nTEST-2\n-------------");
 			var responseFromURIQA3XX = (response.status >= 300 && response.status < 400);
 			console.log("resp3xx: "+responseFromURIQA3XX);
 			if(responseFromURIQA3XX){follow(response);}
@@ -204,6 +208,7 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 		}
 		
 		function test3(response){
+			console.log("-------------\nTEST-3\n-------------");
 		   if(TG_FLAG && response.status >= 400 && response.status < 600){
 		   	alert("TimeGate or Memento error. How does the user agent handle this?");
 		   }else {
@@ -219,8 +224,8 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 			var responseHasTimegateLinkPointingAtURI_G = 
 				response.getResponseHeader("Link") != null &&
 				response.getResponseHeader("Link").match(/rel=(.*)timegate/) != null;
-			console.log(response.getResponseHeader("Link").match(/rel=(.*)timegate/));
-			console.log(response.getResponseHeader("Link").match(/rel=(.*)timegate/) != null);
+			//console.log(response.getResponseHeader("Link").match(/rel=(.*)timegate/));
+			//console.log(response.getResponseHeader("Link").match(/rel=(.*)timegate/) != null);
 			URI_G = "http://api.wayback.archive.org/memento/timegate/"+URI_Q;
 			
 			TG_FLAG = true;
@@ -228,7 +233,13 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 			if(responseHasTimegateLinkPointingAtURI_G){
 				URI_Q = URI_G;
 			}else {
-				URI_Q = localStorage["preferredTimegate"];
+				var preferredTimegate = localStorage["preferredTimegate"];
+				if(!preferredTimegate){
+					preferredTimegate = "http://mementoproxy.cs.odu.edu/aggr/timegate";
+				}
+				URI_Q = preferredTimegate;
+				console.log("mementostart()ing with "+URI_Q);
+				return;
 				mementoStart();
 			}
 		}
