@@ -1,7 +1,7 @@
 var listenerIsActive = false; // Plugin active? 
-var targetTime = "Thu, 31 May 2007 20:35:00 GMT";
+var targetTime = "Thu, 31 May 1901 20:35:00 GMT";
 
-var mementoPrefix = "http://mementoproxy.lanl.gov/aggr/" //"http://www.webarchive.org.uk/wayback/memento/";
+var mementoPrefix = "http://mementoproxy.cs.odu.edu/aggr/" //"http://www.webarchive.org.uk/wayback/memento/";
 var timegatePrefix = mementoPrefix + "timegate/";
 var timemapPrefix = mementoPrefix + "timemap/link/";
 
@@ -36,15 +36,21 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
   }
   
   if(msg.method == "setDate"){
+   localStorage["targetTime"] = msg.tt;
+   beginContentNegotiation();
+  }
+  
+  function beginContentNegotiation(){
+     targetTime = localStorage["targetTime"];
 	 timeTravel = true;
 
-	 targetTime = msg.tt;
+	 //targetTime = datetime;
 
 	 chrome.tabs.getSelected(null, function(selectedTab) {
 		 
 	   console.log("-------------\nSTART:\n-------------");
 	   //console.log("HEAD URI-Q ("+timegatePrefix+(selectedTab.url)+") with Accept-Datetime value "+msg.tt)
-	   console.log("HEAD URI-Q ("+(selectedTab.url)+") with Accept-Datetime value "+msg.tt)
+	   console.log("HEAD URI-Q ("+(selectedTab.url)+") with Accept-Datetime value "+targetTime)
 	   
 	   //hard-coding is no way to go, as it will fail when mementos aren't from api.wayback.archive.org
 	   // this was done to remedy the second query, which has the below prepended to the URI, which is prepended by timegateprefix
@@ -56,6 +62,7 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 	   
 	   
 	   changeIcon("clear");
+	   console.log("URI-Q : "+URI_Q);
 	   mementoStart();
 	   
 	   function mementoStart(){
@@ -64,8 +71,8 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 			type:"HEAD",
 			url:URI_Q
 		   }).done(test0)
-		   .fail(function(d) { console.log("error");})
-		   .always(function() { console.log("complete"); });
+		   .fail(function(d) { console.log("Ajax Request error");})
+		   .always(function() { console.log("Ajax request complete"); });
 		}
 	  var TG_FLAG;
 	  
@@ -143,6 +150,7 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 			}
 		}
 		else {	//getting here when hitting the back button after clicking on a link in the memento
+			console.log("exiting");
 			return; 
 			console.log("Go to TEST-3");
 			alert("You've ended up in a weird place in the code. This path should have only been taken with a 300 and you're saying you got something other than a 3xx.");
@@ -243,13 +251,18 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 				if(!preferredTimegate){
 					preferredTimegate = "http://mementoproxy.cs.odu.edu/aggr/timegate/";
 				}
-				URI_Q = preferredTimegate+URI_Q;
+                URI_Q = preferredTimegate+URI_Q;
+                console.log("Go to mementoStart() with URI-Q="+URI_Q);
 				mementoStart();
 			}
 		}
 		
 		function displayMemento(){
-			console.log("Success");
+			console.log("Success - translating URI from API to WEB in URI")
+			console.log(" old: "+URI_Q);
+			URI_Q = URI_Q.replace("api.wayback.archive.org/memento","web.archive.org/web");
+			console.log(" new: "+URI_Q);
+			console.log("newURIQ: "+URI_Q);
 			chrome.tabs.update(selectedTab.id,{url: URI_Q});
 			updatePopupTime();
 		}
@@ -302,11 +315,17 @@ chrome.webRequest.onBeforeRequest.addListener(
   function(details){
     if( !listenerIsActive) {return {};}// Pass through if the plugin is inactive.
 	//filter invalid "URIs"
+
 	if(details.url.indexOf("chrome://") != -1){return {};}
 	
-	redirectUrl: timegatePrefix+(details.url.replace("?","%3F")) 
-	//return {cancel: true};
-	//redirectUrl: timegatePrefix+(details.url) 
+	
+	var uriQwithTimegate = details.url.replace("?","%3F");
+	if(uriQwithTimegate.indexOf(timegatePrefix) == -1){
+		//console.log("-> "+uriQwithTimegate+" -->"+(timegatePrefix + uriQwithTimegate));
+		uriQwithTimegate = timegatePrefix + uriQwithTimegate;
+	}
+	
+	redirectUrl: uriQwithTimegate;
   },
   {
     urls: ["http://*/*", "https://*/*"]
@@ -324,8 +343,7 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
         if( !listenerIsActive) { // Pass through if the plugin is inactive.
           return {requestHeaders: details.requestHeaders};
         }
-        // Push in the Accept-Datetime header:
-        details.requestHeaders.push( { name: "Accept-Datetime", value: targetTime });
+        details.requestHeaders.push( { name: "Accept-Datetime", value: localStorage["targetTime"] });
         return {requestHeaders: details.requestHeaders};
     },
     {
@@ -408,12 +426,14 @@ function queryTimegate(details){
   		}
   	 })
   	 .error(function(msg){
+  	    console.log("error");
   	 	chrome.browserAction.setBadgeBackgroundColor({color: [255, 0, 0, 255]});
   	 	chrome.browserAction.setBadgeText({text: "ERR"});
   	 	chrome.browserAction.setIcon({path:"mementoLogo-19px-30.png"});
   	 	clockState = 0;
   	 })
   	 .done(function( msg ) {
+  	    console.log("done");
   		getNumberOfMementos(msg,details.tabId);
   		clearTimeout(iconChangeTimeout);
   		clockState = 0;

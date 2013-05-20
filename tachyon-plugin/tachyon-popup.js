@@ -181,7 +181,7 @@ function runTests(){
 	var test3 = new TestCase();
 	test3.description = "Calling an original resource with a specific timegate";
 	test3.initialURIQ = "http://www.cnn.com";
-	test3.timegate = "http://mementoproxy.lanl.gov/aggr/timegate/";
+	test3.timegate = "http://mementoproxy.cs.odu.edu/aggr/timegate/";
 	test3.expected =
 		start +
 		follow +
