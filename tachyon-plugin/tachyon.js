@@ -235,11 +235,9 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 			}else {
 				var preferredTimegate = localStorage["preferredTimegate"];
 				if(!preferredTimegate){
-					preferredTimegate = "http://mementoproxy.cs.odu.edu/aggr/timegate";
+					preferredTimegate = "http://mementoproxy.cs.odu.edu/aggr/timegate/";
 				}
-				URI_Q = preferredTimegate;
-				console.log("mementostart()ing with "+URI_Q);
-				return;
+				URI_Q = preferredTimegate+URI_Q;
 				mementoStart();
 			}
 		}
