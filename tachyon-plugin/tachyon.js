@@ -5,6 +5,8 @@ var mementoPrefix = "http://mementoproxy.lanl.gov/aggr/" //"http://www.webarchiv
 var timegatePrefix = mementoPrefix + "timegate/";
 var timemapPrefix = mementoPrefix + "timemap/link/";
 
+var iconChangeTimout = null; //used to control the clock animation
+
 /* This is used to record any useful information about each tab, 
  * determined from the headers during download.
  */
@@ -51,6 +53,9 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 	   
 	   //var URI_Q = timegatePrefix+(targetURL);
 	   var URI_Q = targetURL;
+	   
+	   
+	   changeIcon("clear");
 	   mementoStart();
 	   
 	   function mementoStart(){
@@ -137,7 +142,8 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 				console.log("CASE 01 302 O2 How does the user agent handle this? UNIMPLEMENTED!");
 			}
 		}
-		else {
+		else {	//getting here when hitting the back button after clicking on a link in the memento
+			return; 
 			console.log("Go to TEST-3");
 			alert("You've ended up in a weird place in the code. This path should have only been taken with a 300 and you're saying you got something other than a 3xx.");
 			test3(response); //should never get here
@@ -266,6 +272,7 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
     chrome.tabs.getSelected(null, function(selectedTab) {
       toggleActive(selectedTab);
     });
+    clearTimeout(iconChangeTimeout);
     iconChangeTimout = null;
     chrome.browserAction.setBadgeText({text: ""});
   }
@@ -339,9 +346,16 @@ chrome.webRequest.onBeforeRedirect.addListener(
     ['responseHeaders']
 );
 
-var iconChangeTimout = null;
+
 var clockState = 30;
 function changeIcon(){
+    if(arguments.length == 1){ //clear any previous animation
+      try{
+       clearTimeout(iconChangeTimeout); 
+	   iconChangeTimout = null;
+	  }catch(e){} //clear the animation timeout if instructed by parameter, otherwise continue normally
+    }
+
 	if(clockState == 45){
 		chrome.browserAction.setIcon({path:"mementoLogo-19px-30.png"});	
 		clockState = 30;	
