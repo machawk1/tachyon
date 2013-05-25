@@ -258,11 +258,12 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 		}
 		
 		function displayMemento(){
-			console.log("Success - translating URI from API to WEB in URI")
-			console.log(" old: "+URI_Q);
-			URI_Q = URI_Q.replace("api.wayback.archive.org/memento","web.archive.org/web");
-			console.log(" new: "+URI_Q);
-			console.log("newURIQ: "+URI_Q);
+			console.log("SUCCESS");
+			//console.log("Success - translating URI from API to WEB in URI")
+			//console.log(" old: "+URI_Q);
+			//URI_Q = URI_Q.replace("api.wayback.archive.org/memento","web.archive.org/web");
+			//console.log(" new: "+URI_Q);
+			//console.log("newURIQ: "+URI_Q);
 			chrome.tabs.update(selectedTab.id,{url: URI_Q});
 			updatePopupTime();
 		}
@@ -313,6 +314,14 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 chrome.webRequest.onBeforeRequest.addListener(
   
   function(details){
+	//prevent tabs that are not the currently active one from polluting the header array
+  	var requestIsFromCurrentTab = false;
+    chrome.tabs.getSelected(null, function(selectedTab) {
+  	  requestIsFromCurrentTab = (details.tabId==selectedTab.id);
+    });
+    if(!requestIsFromCurrentTab){return;}
+    
+    
     if( !listenerIsActive) {return {};}// Pass through if the plugin is inactive.
 	//filter invalid "URIs"
 
@@ -324,7 +333,7 @@ chrome.webRequest.onBeforeRequest.addListener(
 		//console.log("-> "+uriQwithTimegate+" -->"+(timegatePrefix + uriQwithTimegate));
 		uriQwithTimegate = timegatePrefix + uriQwithTimegate;
 	}
-	
+	console.log("rduri: "+uriQwithTimegate);
 	redirectUrl: uriQwithTimegate;
   },
   {
@@ -340,6 +349,13 @@ chrome.webRequest.onBeforeRequest.addListener(
  */
 chrome.webRequest.onBeforeSendHeaders.addListener(
     function(details ) {
+    	//prevent tabs that are not the currently active one from polluting the header array
+  	    var requestIsFromCurrentTab = false;
+        chrome.tabs.getSelected(null, function(selectedTab) {
+  	      requestIsFromCurrentTab = (details.tabId==selectedTab.id);
+        });
+        if(!requestIsFromCurrentTab){return;}
+    
         if( !listenerIsActive) { // Pass through if the plugin is inactive.
           return {requestHeaders: details.requestHeaders};
         }
