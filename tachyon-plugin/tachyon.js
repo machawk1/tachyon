@@ -343,7 +343,7 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
         if( !listenerIsActive) { // Pass through if the plugin is inactive.
           return {requestHeaders: details.requestHeaders};
         }
-        details.requestHeaders.push( { name: "Accept-Datetime", value: localStorage["targetTime"] });
+        //details.requestHeaders.push( { name: "Accept-Datetime", value: localStorage["targetTime"] });
         return {requestHeaders: details.requestHeaders};
     },
     {
@@ -417,6 +417,7 @@ function queryTimegate(details){
   }
   
   if( listenerIsActive ){
+     if(details.url.indexOf("chrome://") > -1 || details.url.indexOf("chrome-devtools://") > -1){return;}
   	 $.ajax({
   		url: timemapPrefix+details.url,
   		beforeSend: function ( xhr ) {
