@@ -1,5 +1,6 @@
 var listenerIsActive = false; // Plugin active? 
-var targetTime = "Thu, 31 May 1901 20:35:00 GMT";
+var targetTime_default = "Thu, 31 May 1901 20:35:00 GMT";
+var targetTime = targetTime_default; // means to checks to determine if setdate has been executed
 
 var mementoPrefix = "http://mementoproxy.cs.odu.edu/aggr/" //"http://www.webarchive.org.uk/wayback/memento/";
 var timegatePrefix = mementoPrefix + "timegate/";
@@ -28,6 +29,8 @@ chrome.browserAction.onClicked.addListener(toggleActive);
 var timeTravel = false;
 
 chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
+  console.log("*** EXECUTING LISTENER");
+  console.log(msg);
   if(msg.method == "getMementosForCurrentTab"){
 	  chrome.tabs.getSelected(null, function(selectedTab) {
 		  sendResponse({mementos: mementos[selectedTab.id], uri: selectedTab.url});
@@ -41,6 +44,7 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
   }
   
   function beginContentNegotiation(){
+  	 console.log("*** BEGINNING CONTENT NEGOTIATION");
      targetTime = localStorage["targetTime"];
 	 timeTravel = true;
 
@@ -63,9 +67,11 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 	   
 	   changeIcon("clear");
 	   console.log("URI-Q : "+URI_Q);
+	   
 	   mementoStart();
 	   
 	   function mementoStart(){
+	   		redirectResponseDetails = null;
 		   console.log("Go to TEST-0");	//this is out of place and should be in Ajax done() but then done loses anonymity and arguments
 		   $.ajax({
 			type:"HEAD",
@@ -78,6 +84,8 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 	  
 	  function test0(message,text,response){
 			if(redirectResponseDetails != null){ //a redirect had to be intercepted by Chrome. Ajax does not normally allow this
+				console.log("Going the redirect code path");
+				console.log(redirectResponseDetails);
 				test0_redirect();
 				return;
 			} 		  
@@ -97,7 +105,8 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 	}
 		
 	function test0_redirect(){
-		//console.log(redirectResponseDetails);
+		console.log("-------------\nTEST-0 R\n-------------");
+		console.log(redirectResponseDetails);
 		var headers = Array();
 		for(var rh in redirectResponseDetails.responseHeaders){
 			headers[redirectResponseDetails.responseHeaders[rh].name.toUpperCase()] = redirectResponseDetails.responseHeaders[rh].value.toUpperCase();
@@ -108,7 +117,7 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 		var varyHeader = headers["VARY"];
 		var containsVaryAcceptDatetime = varyHeader && varyHeader.indexOf("ACCEPT-DATETIME") > -1;
 		
-		console.log("-------------\nTEST-0\n-------------");
+		
 		console.log("Response from URI-Q contain Vary: accept-datetime? "+containsVaryAcceptDatetime);
 		if(containsVaryAcceptDatetime){
 			TG_FLAG = true; console.log("TG-FLAG = TRUE");
@@ -120,8 +129,9 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 	}
 	
 	function test1_redirect(headers){
-		console.log("-------------\nTEST-1\n-------------");
+		console.log("-------------\nTEST-1 R\n-------------");
 		var uriQIsAMemento = (headers['Memento-Datetime'] != null);
+		console.log(headers);
 		console.log("URI-Q is a Memento? "+uriQIsAMemento+" "+headers['Memento-Datetime']);
 		if(uriQIsAMemento){
 			TG_FLAG = false; console.log("  Setting TG-FLAG = FALSE");
@@ -138,6 +148,7 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 	}
 	
 	function test2_redirect(headers){
+		console.log("-------------\nTEST-2 R\n-------------");
 		var responseFromURIQA3XX = (headers["status"] >= 300 && headers["status"] < 400);
 		console.log("Is the response from URI-Q a 300?: "+responseFromURIQA3XX);
 		if(responseFromURIQA3XX){
@@ -150,8 +161,6 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 			}
 		}
 		else {	//getting here when hitting the back button after clicking on a link in the memento
-			console.log("exiting");
-			return; 
 			console.log("Go to TEST-3");
 			alert("You've ended up in a weird place in the code. This path should have only been taken with a 300 and you're saying you got something other than a 3xx.");
 			test3(response); //should never get here
@@ -245,7 +254,11 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 			TG_FLAG = true;
 			URI_R = URI_Q;
 			if(responseHasTimegateLinkPointingAtURI_G){
+				var timegateRegExResult = response.getResponseHeader("Link").match("<(.*)>");
+				URI_G = timegateRegExResult[1];
+				console.log("URI-Q ("+URI_Q+") = URI-G ("+URI_G+")");
 				URI_Q = URI_G;
+				mementoStart(); //should this be here?
 			}else {
 				var preferredTimegate = localStorage["preferredTimegate"];
 				if(!preferredTimegate){
@@ -264,8 +277,9 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 			//URI_Q = URI_Q.replace("api.wayback.archive.org/memento","web.archive.org/web");
 			//console.log(" new: "+URI_Q);
 			//console.log("newURIQ: "+URI_Q);
+			console.log("MEMENTO: "+URI_Q);
 			chrome.tabs.update(selectedTab.id,{url: URI_Q});
-			updatePopupTime();
+			//updatePopupTime();
 		}
 		
 		function updatePopupTime(){
@@ -274,9 +288,6 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 			chrome.extension.sendMessage({method: 'updateDropDown',datetime: dateMatch, mCollection: mCollection });
 			console.log(dateMatch);
 		}
-		
-		
-	   	//chrome.tabs.update(selectedTab.id,{url:URI_Q});
     })
   }
   
@@ -315,26 +326,27 @@ chrome.webRequest.onBeforeRequest.addListener(
   
   function(details){
 	//prevent tabs that are not the currently active one from polluting the header array
-  	var requestIsFromCurrentTab = false;
+  	/*var requestIsFromCurrentTab = false;
     chrome.tabs.getSelected(null, function(selectedTab) {
   	  requestIsFromCurrentTab = (details.tabId==selectedTab.id);
     });
     if(!requestIsFromCurrentTab){return;}
-    
-    
-    if( !listenerIsActive) {return {};}// Pass through if the plugin is inactive.
+    */
+	
+    if( !listenerIsActive || targetTime == targetTime_default) {return {};}// Pass through if the plugin is inactive.
 	//filter invalid "URIs"
 
 	if(details.url.indexOf("chrome://") != -1){return {};}
 	
 	
 	var uriQwithTimegate = details.url.replace("?","%3F");
-	if(uriQwithTimegate.indexOf(timegatePrefix) == -1){
-		//console.log("-> "+uriQwithTimegate+" -->"+(timegatePrefix + uriQwithTimegate));
+	/*if(uriQwithTimegate.indexOf(timegatePrefix) == -1 && uriQwithTimegate.indexOf("mementoarchive.cs.odu.edu") == -1){
+		console.log("-> "+uriQwithTimegate+" -->"+(timegatePrefix + uriQwithTimegate));
+		console.log(details);
 		uriQwithTimegate = timegatePrefix + uriQwithTimegate;
-	}
-	console.log("rduri: "+uriQwithTimegate);
-	redirectUrl: uriQwithTimegate;
+	}*/
+	console.log("rduri: "+uriQwithTimegate+ " time:"+targetTime);
+	return {redirectUrl: uriQwithTimegate};
   },
   {
     urls: ["http://*/*", "https://*/*"]
@@ -348,18 +360,34 @@ chrome.webRequest.onBeforeRequest.addListener(
  * This modifies the request headers, adding in the desire Datetime.
  */
 chrome.webRequest.onBeforeSendHeaders.addListener(
-    function(details ) {
+    function(details) {
+    	if( !listenerIsActive || targetTime == targetTime_default) {return {};}
+    	//console.log("Executing onBeforeSendHeaders with url="+details.url);
+    	console.log(
     	//prevent tabs that are not the currently active one from polluting the header array
-  	    var requestIsFromCurrentTab = false;
+  	    /*var requestIsFromCurrentTab = false;
+  	    
         chrome.tabs.getSelected(null, function(selectedTab) {
   	      requestIsFromCurrentTab = (details.tabId==selectedTab.id);
+  	      console.log("details.tabId-->"+fff+" "+selectedTab.id+"<--selectedTab.id");
         });
         if(!requestIsFromCurrentTab){return;}
-    
-        if( !listenerIsActive) { // Pass through if the plugin is inactive.
+    	*/
+    	//console.log(details);
+    	
+		if(details.url.indexOf(timegatePrefix) == -1 && details.url.indexOf("mementoarchive.cs.odu.edu") == -1){
+			console.log("Request Details did not contain the timegateprefix, adding now");
+			console.log(details.url + " --> " + timegatePrefix + details.url);
+			details.url = timegatePrefix + details.url;
+		}else {
+			console.log("Request Details URL ("+details.url+") already contained timegateprefix ("+timegatePrefix+")");
+		}
+
+        if( !listenerIsActive || targetTime == targetTime_default) { // Pass through if the plugin is inactive.
           return {requestHeaders: details.requestHeaders};
         }
-        //details.requestHeaders.push( { name: "Accept-Datetime", value: localStorage["targetTime"] });
+        details.requestHeaders.push( { name: "Cache-Control", value: "no-cache" });
+        details.requestHeaders.push( { name: "Accept-Datetime", value: localStorage["targetTime"] });
         return {requestHeaders: details.requestHeaders};
     },
     {
@@ -371,13 +399,36 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
 var redirectResponseDetails = null;
 
 chrome.webRequest.onBeforeRedirect.addListener(
-	function(details){
-		redirectResponseDetails = details;
+	function(details){	
+		if(details.url != details.redirectUrl){ //for some reason the enclosing handler is fired even when there is no true 3XX redirect, see http://odusource.cs.odu.edu/hello
+			redirectResponseDetails = details;
+			console.log("***** onbeforeredirect");
+			console.log(details);
+    	}
     },
     {
        urls: ["http://*/*", "https://*/*"]
     },
     ['responseHeaders']
+);
+
+chrome.webRequest.onResponseStarted.addListener(
+	function(details){
+		 if( !listenerIsActive || targetTime == targetTime_default){return {};}
+		console.log("*** onresponsestarted");
+		console.log(details);
+		
+		for(var rHeader in details.responseHeaders){
+			if(details.responseHeaders[rHeader].name.toUpperCase() == "MEMENTO-DATETIME"){
+				URI_Q = details.url;
+				break;
+			}
+		}
+	},
+	{
+		urls: ["http://*/*", "https://*/*"]
+	},
+	['responseHeaders']
 );
 
 
