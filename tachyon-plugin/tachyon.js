@@ -320,12 +320,12 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 		function displayMemento(){
 			console.log("SUCCESS");
 			console.log("MEMENTO: "+URI_Q);
-			//if(originalURIQ){	//do an update on the webpage if original resource
+			if(originalURIQ){	//do an update on the webpage if original resource
 				chrome.tabs.update(selectedTab.id,{url: URI_Q});
-			//	originalURIQ = false;
-			//}else { //otherwise, just return the new resource location
-			//	console.log("Got to displayMemento for "+URI_Q);
-			//}
+				originalURIQ = false;
+			}else { //otherwise, just return the new resource location
+				console.log("Got to displayMemento for "+URI_Q);
+			}
 			//	function(tab){} //potentially use this callback in the future
 			//);
 			//updatePopupTime();
@@ -465,9 +465,11 @@ var redirectResponseDetails = null;
 chrome.webRequest.onBeforeRedirect.addListener(
 	function(details){	
 		if(details.url != details.redirectUrl){ //for some reason the enclosing handler is fired even when there is no true 3XX redirect, see http://odusource.cs.odu.edu/hello
-			redirectResponseDetails = details;
-			console.log("***** onbeforeredirect");
-			console.log(details);
+			if(details.method == "HEAD"){ //only the extension's HEAD requests will count, not the subsequent GETs
+				redirectResponseDetails = details;
+				console.log("***** onbeforeredirect");
+				console.log(details);
+    		}
     	}
     },
     {
@@ -503,7 +505,7 @@ chrome.webRequest.onResponseStarted.addListener(
 
 chrome.webRequest.onCompleted.addListener(
 	function(details){
-		console.log("request completed! "+details.url);
+		//console.log("request completed! "+details.url);
 //		console.log(details.url);	
 	},
 	{
