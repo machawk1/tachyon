@@ -9,6 +9,7 @@ var timemapPrefix = mementoPrefix + "timemap/link/";
 var iconChangeTimout = null; //used to control the clock animation
 
 var originalURIQ = true;
+var xhr;
 
 /* This is used to record any useful information about each tab, 
  * determined from the headers during download.
@@ -29,7 +30,7 @@ function toggleActive(tab) {
 
 chrome.browserAction.onClicked.addListener(toggleActive);
 var timeTravel = false;
-
+var URI_Q;
 chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
   console.log("*** EXECUTING LISTENER");
   console.log(msg);
@@ -44,9 +45,9 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
    localStorage["targetTime"] = msg.tt;
    targetTime = msg.tt;
    chrome.tabs.reload();
-   //beginContentNegotiation();
+   beginContentNegotiation();
   }
-  var URI_Q;
+  
   function beginContentNegotiation(){
   	 if(arguments.length > 0){
   	 	console.log("XSetting URI-Q to "+arguments[0]);
@@ -61,9 +62,8 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 	 //targetTime = datetime;
 
 	 chrome.tabs.getSelected(null, function(selectedTab) {
-		 
-	   console.log("-------------\nSTART:\n-------------");
-	   console.log("HEAD URI-Q ("+(selectedTab.url)+") with Accept-Datetime value "+targetTime)
+	  	 
+	   
 	   
 	   //hard-coding is no way to go, as it will fail when mementos aren't from api.wayback.archive.org
 	   // this was done to remedy the second query, which has the below prepended to the URI, which is prepended by timegateprefix
@@ -83,20 +83,40 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 	   
 	   function mementoStart(){
 	   		redirectResponseDetails = null;
-		   console.log("Go to TEST-0");	//this is out of place and should be in Ajax done() but then done loses anonymity and arguments
-		   $.ajax({
+	   	   /*if(xhr){
+	   	   	console.log("cancelling last run's ajax request");
+	   	   	xhr.abort(); xhr = null;
+	   	   	return;
+	   	   }	//clear a previous ajax request if it exists
+	   	   */
+	   	   
+		   console.log("-------------\nSTART:\n-------------");
+	   	   console.log("HEAD URI-Q ("+(URI_Q)+") with Accept-Datetime value "+targetTime)
+		   xhr = $.ajax({
 			type:"HEAD",
-			url:URI_Q
+			url:URI_Q,
+			headers: {'Accept-Datetime':targetTime}
+			//,
+			//async: false
 		   }).done(test0)
-		   .fail(function(d) { console.log("Ajax Request error");})
+		   .fail(function(d) { 
+		   		console.log("Ajax Request error"); 
+		   		/*console.log(d);
+		   	   	   if(xhr){
+					console.log("cancelling last run's ajax request");
+					xhr.abort(); xhr = null;
+					return;
+				   }	//clear a previous ajax request if it exists*/
+		   })
 		   .always(function() { 
 		   		console.log("Ajax request complete"); 
-		   		console.log("ending URI-Q = "+URI_Q);
+		   		//console.log("ending URI-Q = "+URI_Q);
 		   	});
 		}
 	  var TG_FLAG;
 	  
 	  function test0(message,text,response){
+	  		console.log("Go to TEST-0");
 			if(redirectResponseDetails != null){ //a redirect had to be intercepted by Chrome. Ajax does not normally allow this
 				console.log("Going the redirect code path");
 				console.log(redirectResponseDetails);
@@ -381,12 +401,20 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
     		console.log("Fell into conditional for "+details.url+"  "+!listenerIsActive +" || "+ (targetTime == targetTime_default));
     	return {};}
     	//console.log("Executing onBeforeSendHeaders with url="+details.url);
+    	return;
+    	
+    	
     	console.log("beginning content negotiation for "+details.url);
-    	if(originalURIQ){
+    	if(originalURIQ && details.tabId != -1){
+    		console.log("IN IF");
+    		console.log(details);
     		beginContentNegotiation();
-    	}else {
+    	}else if(originalURIQ && details.tabId == -1){//ignore the first ajax request
+    	    console.log("ignoring the ajax-based uri seed content negotation request");
+    	} else {
     		beginContentNegotiation(details.url);
     	}
+    	return;
     	//prevent tabs that are not the currently active one from polluting the header array
   	    /*var requestIsFromCurrentTab = false;
   	    
@@ -431,8 +459,8 @@ chrome.webRequest.onBeforeRedirect.addListener(
 	function(details){	
 		if(details.url != details.redirectUrl){ //for some reason the enclosing handler is fired even when there is no true 3XX redirect, see http://odusource.cs.odu.edu/hello
 			redirectResponseDetails = details;
-			//console.log("***** onbeforeredirect");
-			//console.log(details);
+			console.log("***** onbeforeredirect");
+			console.log(details);
     	}
     },
     {
@@ -468,8 +496,8 @@ chrome.webRequest.onResponseStarted.addListener(
 
 chrome.webRequest.onCompleted.addListener(
 	function(details){
-		console.log("request completed!");
-		console.log(details);	
+		console.log("request completed! "+details.url);
+//		console.log(details.url);	
 	},
 	{
 		urls: ["http://*/*", "https://*/*"]
