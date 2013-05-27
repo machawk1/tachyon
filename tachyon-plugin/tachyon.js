@@ -8,6 +8,8 @@ var timemapPrefix = mementoPrefix + "timemap/link/";
 
 var iconChangeTimout = null; //used to control the clock animation
 
+var originalURIQ = true;
+
 /* This is used to record any useful information about each tab, 
  * determined from the headers during download.
  */
@@ -40,10 +42,18 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
   
   if(msg.method == "setDate"){
    localStorage["targetTime"] = msg.tt;
-   beginContentNegotiation();
+   targetTime = msg.tt;
+   chrome.tabs.reload();
+   //beginContentNegotiation();
   }
-  
+  var URI_Q;
   function beginContentNegotiation(){
+  	 if(arguments.length > 0){
+  	 	console.log("XSetting URI-Q to "+arguments[0]);
+  	 	console.log("arguments length == "+arguments.length);
+  	 	console.log(arguments);
+  	 	URI_Q = arguments[0];
+  	 }
   	 console.log("*** BEGINNING CONTENT NEGOTIATION");
      targetTime = localStorage["targetTime"];
 	 timeTravel = true;
@@ -53,7 +63,6 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 	 chrome.tabs.getSelected(null, function(selectedTab) {
 		 
 	   console.log("-------------\nSTART:\n-------------");
-	   //console.log("HEAD URI-Q ("+timegatePrefix+(selectedTab.url)+") with Accept-Datetime value "+msg.tt)
 	   console.log("HEAD URI-Q ("+(selectedTab.url)+") with Accept-Datetime value "+targetTime)
 	   
 	   //hard-coding is no way to go, as it will fail when mementos aren't from api.wayback.archive.org
@@ -62,7 +71,9 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 	   var targetURL = selectedTab.url.replace(/http:\/\/api\.wayback\.archive\.org\/memento\/[0-9]+\//,"");
 	   
 	   //var URI_Q = timegatePrefix+(targetURL);
-	   var URI_Q = targetURL;
+	   if(originalURIQ){
+	   	URI_Q = targetURL;
+	   }
 	   
 	   
 	   changeIcon("clear");
@@ -164,9 +175,12 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 			}
 		}
 		else {	//getting here when hitting the back button after clicking on a link in the memento
-			console.log("Go to TEST-3");
-			alert("You've ended up in a weird place in the code. This path should have only been taken with a 300 and you're saying you got something other than a 3xx.");
-			test3(response); //should never get here
+			//console.log("Go to TEST-3");
+			console.log("You've ended up in a weird place in the code. This path should have only been taken with a 300 and you're saying you got something other than a 3xx.");
+
+			//alert("You've ended up in a weird place in the code. This path should have only been taken with a 300 and you're saying you got something other than a 3xx.");
+			//test3(response); //should never get here
+			return;
 		}
 	}
 	
@@ -279,7 +293,12 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 		function displayMemento(){
 			console.log("SUCCESS");
 			console.log("MEMENTO: "+URI_Q);
-			//chrome.tabs.update(selectedTab.id,{url: URI_Q},
+			if(originalURIQ){	//do an update on the webpage if original resource
+				chrome.tabs.update(selectedTab.id,{url: URI_Q});
+				originalURIQ = false;
+			}else { //otherwise, just return the new resource location
+				console.log("Got to displayMemento for "+URI_Q);
+			}
 			//	function(tab){} //potentially use this callback in the future
 			//);
 			//updatePopupTime();
@@ -317,14 +336,13 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
     console.log("Sending current targetTime...");
     chrome.extension.sendMessage({showTargetTime: true, targetTime: targetTime });
   }*/
-});
 
 
 
-/**
- * This takes the url of any request and redirects it to the TimeGate.
- * The actual Datetime request is handled later (see below).
- */
+
+/* ****************************
+   HEADER HANDLERS AND MANIPULATION
+   VVVVVVVVVVVVVVVVVVVVVVVVVVVVV */
 chrome.webRequest.onBeforeRequest.addListener(
   
   function(details){
@@ -335,20 +353,13 @@ chrome.webRequest.onBeforeRequest.addListener(
     });
     if(!requestIsFromCurrentTab){return;}
     */
+	return; //  Not confident that this function is doing anything useful or conducive to the procedure at the moment.
 	
     if( !listenerIsActive || targetTime == targetTime_default) {return {};}// Pass through if the plugin is inactive.
-	//filter invalid "URIs"
-
 	if(details.url.indexOf("chrome://") != -1){return {};}
 	
-	
 	var uriQwithTimegate = details.url.replace("?","%3F");
-	/*if(uriQwithTimegate.indexOf(timegatePrefix) == -1 && uriQwithTimegate.indexOf("mementoarchive.cs.odu.edu") == -1){
-		console.log("-> "+uriQwithTimegate+" -->"+(timegatePrefix + uriQwithTimegate));
-		console.log(details);
-		uriQwithTimegate = timegatePrefix + uriQwithTimegate;
-	}*/
-	console.log("rduri: "+uriQwithTimegate+ " time:"+targetTime);
+	//console.log("rduri: "+uriQwithTimegate+ " time:"+targetTime);
 	return {redirectUrl: uriQwithTimegate};
   },
   
@@ -366,9 +377,16 @@ chrome.webRequest.onBeforeRequest.addListener(
  */
 chrome.webRequest.onBeforeSendHeaders.addListener(
     function(details) {
-    	if( !listenerIsActive || targetTime == targetTime_default) {return {};}
+    	if( !listenerIsActive || targetTime == targetTime_default) {
+    		console.log("Fell into conditional for "+details.url+"  "+!listenerIsActive +" || "+ (targetTime == targetTime_default));
+    	return {};}
     	//console.log("Executing onBeforeSendHeaders with url="+details.url);
-    	
+    	console.log("beginning content negotiation for "+details.url);
+    	if(originalURIQ){
+    		beginContentNegotiation();
+    	}else {
+    		beginContentNegotiation(details.url);
+    	}
     	//prevent tabs that are not the currently active one from polluting the header array
   	    /*var requestIsFromCurrentTab = false;
   	    
@@ -378,20 +396,24 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
         });
         if(!requestIsFromCurrentTab){return;}
     	*/
-    	console.log("onbeforesendheaders");
-    	console.log(details);
-    	
-		if(details.url.indexOf(timegatePrefix) == -1 && details.url.indexOf("mementoarchive.cs.odu.edu") == -1){
+    	//console.log("onbeforesendheaders");
+    	//console.log(details);
+    	   	
+		/*if(details.url.indexOf(timegatePrefix) == -1 && details.url.indexOf("mementoarchive.cs.odu.edu") == -1){
 			console.log("Request Details did not contain the timegateprefix, adding now");
 			console.log(details.url + " --> " + timegatePrefix + details.url);
 			details.url = timegatePrefix + details.url;
 		}else {
 			console.log("Request Details URL ("+details.url+") already contained timegateprefix ("+timegatePrefix+")");
-		}
+		}*/
+		
+		
 
         if( !listenerIsActive || targetTime == targetTime_default) { // Pass through if the plugin is inactive.
           return {requestHeaders: details.requestHeaders};
         }
+        
+        return;
         details.requestHeaders.push( { name: "Cache-Control", value: "no-cache" });
         details.requestHeaders.push( { name: "Accept-Datetime", value: localStorage["targetTime"] });
         return {requestHeaders: details.requestHeaders};
@@ -423,12 +445,16 @@ chrome.webRequest.onResponseStarted.addListener(
 	function(details){
 		//console.log("responsestarted "+details.url+" listener active: "+listenerIsActive+"  targettime: "+targetTime);
 		 if( !listenerIsActive || targetTime == targetTime_default){return {};}
-		console.log("*** onresponsestarted");
-		console.log(details);
+		//console.log("*** onresponsestarted");
+		//console.log(details);
+		return;
 		
 		for(var rHeader in details.responseHeaders){
 			if(details.responseHeaders[rHeader].name.toUpperCase() == "MEMENTO-DATETIME"){
 				URI_Q = details.url;
+				console.log("new URI-Q: "+URI_Q);
+				return;
+				beginContentNegotiation();
 				break;
 			}
 		}
@@ -438,6 +464,25 @@ chrome.webRequest.onResponseStarted.addListener(
 	},
 	['responseHeaders']
 );
+
+
+chrome.webRequest.onCompleted.addListener(
+	function(details){
+		console.log("request completed!");
+		console.log(details);	
+	},
+	{
+		urls: ["http://*/*", "https://*/*"]
+	},
+	['responseHeaders']
+);
+
+
+});
+
+/* ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   END HEADER HANDLERS AND MANIPULATION
+   **************************** */
 
 
 var clockState = 30;
@@ -497,6 +542,10 @@ function queryTimegate(details){
   		url: timemapPrefix+details.url,
   		beforeSend: function ( xhr ) {
   			chrome.browserAction.setBadgeText({text: ""});
+  			xhr.setRequestHeader("Cache-Control", "no-cache");
+  			xhr.setRequestHeader("Accept-Datetime", localStorage["targetTime"]);
+  				
+
   			clockState = 30;
   			changeIcon();
   		}
@@ -525,8 +574,8 @@ function queryTimegate(details){
 chrome.webRequest.onHeadersReceived.addListener(
 	function(details){
 		 if( listenerIsActive && targetTime != targetTime_default) {
-			console.log("Headers received");
-			console.log(details);
+			//console.log("Headers received");
+			//console.log(details);
 		}
 	}, 
     {
