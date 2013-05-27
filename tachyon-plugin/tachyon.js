@@ -78,7 +78,10 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 			url:URI_Q
 		   }).done(test0)
 		   .fail(function(d) { console.log("Ajax Request error");})
-		   .always(function() { console.log("Ajax request complete"); });
+		   .always(function() { 
+		   		console.log("Ajax request complete"); 
+		   		console.log("ending URI-Q = "+URI_Q);
+		   	});
 		}
 	  var TG_FLAG;
 	  
@@ -261,10 +264,13 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 				mementoStart(); //should this be here?
 			}else {
 				var preferredTimegate = localStorage["preferredTimegate"];
-				if(!preferredTimegate){
-					preferredTimegate = "http://mementoproxy.cs.odu.edu/aggr/timegate/";
-				}
-                URI_Q = preferredTimegate+URI_Q;
+				//if(!preferredTimegate){	//this value hasn't been set by the user. Set it here.
+				var	preferredTimegate = "http://mementoproxy.cs.odu.edu/aggr/timegate/";
+				//	localStorage["preferredTimegate"] = preferredTimegate;
+				//}
+				console.log("Preferred timegate is "+preferredTimegate);
+				console.log("Current URI-Q is "+URI_Q);
+                URI_Q = (preferredTimegate + "" + URI_Q);
                 console.log("Go to mementoStart() with URI-Q="+URI_Q);
 				mementoStart();
 			}
@@ -272,13 +278,10 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 		
 		function displayMemento(){
 			console.log("SUCCESS");
-			//console.log("Success - translating URI from API to WEB in URI")
-			//console.log(" old: "+URI_Q);
-			//URI_Q = URI_Q.replace("api.wayback.archive.org/memento","web.archive.org/web");
-			//console.log(" new: "+URI_Q);
-			//console.log("newURIQ: "+URI_Q);
 			console.log("MEMENTO: "+URI_Q);
-			chrome.tabs.update(selectedTab.id,{url: URI_Q});
+			//chrome.tabs.update(selectedTab.id,{url: URI_Q},
+			//	function(tab){} //potentially use this callback in the future
+			//);
 			//updatePopupTime();
 		}
 		
@@ -348,8 +351,10 @@ chrome.webRequest.onBeforeRequest.addListener(
 	console.log("rduri: "+uriQwithTimegate+ " time:"+targetTime);
 	return {redirectUrl: uriQwithTimegate};
   },
+  
   {
-    urls: ["http://*/*", "https://*/*"]
+    urls: ["http://*/*", "https://*/*"],
+    types: ["main_frame", "sub_frame", "stylesheet", "script", "image", "object", "xmlhttprequest", "other"]
   },
   ["blocking"]
 );
@@ -363,7 +368,7 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
     function(details) {
     	if( !listenerIsActive || targetTime == targetTime_default) {return {};}
     	//console.log("Executing onBeforeSendHeaders with url="+details.url);
-    	console.log(
+    	
     	//prevent tabs that are not the currently active one from polluting the header array
   	    /*var requestIsFromCurrentTab = false;
   	    
@@ -373,7 +378,8 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
         });
         if(!requestIsFromCurrentTab){return;}
     	*/
-    	//console.log(details);
+    	console.log("onbeforesendheaders");
+    	console.log(details);
     	
 		if(details.url.indexOf(timegatePrefix) == -1 && details.url.indexOf("mementoarchive.cs.odu.edu") == -1){
 			console.log("Request Details did not contain the timegateprefix, adding now");
@@ -391,7 +397,8 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
         return {requestHeaders: details.requestHeaders};
     },
     {
-       urls: ["http://*/*", "https://*/*"]
+       urls: ["http://*/*", "https://*/*"],
+       types: ["main_frame", "sub_frame", "stylesheet", "script", "image", "object", "xmlhttprequest", "other"]
     },
     ['requestHeaders','blocking']
  );
@@ -402,8 +409,8 @@ chrome.webRequest.onBeforeRedirect.addListener(
 	function(details){	
 		if(details.url != details.redirectUrl){ //for some reason the enclosing handler is fired even when there is no true 3XX redirect, see http://odusource.cs.odu.edu/hello
 			redirectResponseDetails = details;
-			console.log("***** onbeforeredirect");
-			console.log(details);
+			//console.log("***** onbeforeredirect");
+			//console.log(details);
     	}
     },
     {
@@ -414,6 +421,7 @@ chrome.webRequest.onBeforeRedirect.addListener(
 
 chrome.webRequest.onResponseStarted.addListener(
 	function(details){
+		//console.log("responsestarted "+details.url+" listener active: "+listenerIsActive+"  targettime: "+targetTime);
 		 if( !listenerIsActive || targetTime == targetTime_default){return {};}
 		console.log("*** onresponsestarted");
 		console.log(details);
@@ -513,6 +521,20 @@ function queryTimegate(details){
 	 });
 	} //fi
 }
+
+chrome.webRequest.onHeadersReceived.addListener(
+	function(details){
+		 if( listenerIsActive && targetTime != targetTime_default) {
+			console.log("Headers received");
+			console.log(details);
+		}
+	}, 
+    {
+     urls:["http://*/*", "https://*/*"],
+     types: ["main_frame", "sub_frame", "stylesheet", "script", "image", "object", "xmlhttprequest", "other"]
+   },
+   ["responseHeaders","blocking"]
+);
 
 /*chrome.webRequest.onHeadersReceived.addListener(
   function(details) {
