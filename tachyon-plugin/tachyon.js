@@ -75,6 +75,13 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 	   	URI_Q = targetURL;
 	   }
 	   
+	   if(URI_Q.match(/http(s)*:\/\//gi).length > 1){ //getting original URI-Q, as we're currently viewing a memento
+	   	console.log("memento within memento");
+	   	console.log(URI_Q.indexOf("http",5));
+	   	console.log(URI_Q.substr(URI_Q.indexOf("http",5)));
+	   	URI_Q = URI_Q.substr(URI_Q.indexOf("http",5));
+	   }
+	   
 	   
 	   changeIcon("clear");
 	   console.log("URI-Q : "+URI_Q);
@@ -313,12 +320,12 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 		function displayMemento(){
 			console.log("SUCCESS");
 			console.log("MEMENTO: "+URI_Q);
-			if(originalURIQ){	//do an update on the webpage if original resource
+			//if(originalURIQ){	//do an update on the webpage if original resource
 				chrome.tabs.update(selectedTab.id,{url: URI_Q});
-				originalURIQ = false;
-			}else { //otherwise, just return the new resource location
-				console.log("Got to displayMemento for "+URI_Q);
-			}
+			//	originalURIQ = false;
+			//}else { //otherwise, just return the new resource location
+			//	console.log("Got to displayMemento for "+URI_Q);
+			//}
 			//	function(tab){} //potentially use this callback in the future
 			//);
 			//updatePopupTime();
