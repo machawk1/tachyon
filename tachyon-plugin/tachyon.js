@@ -109,6 +109,10 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 	   	originalURIQ = targetURL;
 	   	console.log("Setting originalURIQ to "+targetURL);
 	   	console.log("Set URI_Q from targetURL: "+URI_Q);
+	   	
+	   	if(URI_Q.match(/http(s)*:\/\//gi).length > 1){	//prevent memento-within-memento query
+	   		URI_Q = URI_Q.substr(URI_Q.indexOf("http",5));
+	   	}
 	   }
 	   
 	   if(!URI_Q){
@@ -367,8 +371,6 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 			console.log("MEMENTO: "+URI_Q);
 			
 			if((URI_Q.search(originalURIQ) + originalURIQ.length) == URI_Q.length){	//check if current URIQ is originalURIQ
-				console.log("HUGE SUCCESS "+URI_Q);
-				console.log(URI_Q.search(originalURIQ)+ " + " + originalURIQ.length + " == " +  URI_Q.length);
 				chrome.tabs.update(selectedTab.id,{url: URI_Q});
 				//originalURIQ = false;
 				semaphoreLock = false;
