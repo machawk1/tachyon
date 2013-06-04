@@ -32,7 +32,7 @@ function toggleActive(tab) {
 chrome.browserAction.onClicked.addListener(toggleActive);
 var timeTravel = false;
 
-
+/*
 function getResourceMemento(uri){
 	if(!resourceMementos[uri]){
 		setTimeout(function(){getResourceMemento(uri);},1000);
@@ -53,6 +53,7 @@ function getResourceMemento(uri){
 		return resourceMementos[uri];
 	}
 }
+*/
     	
 
 var ou = ""; //dev test to see if it's the original URI being queried;
@@ -73,9 +74,9 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
    //console.log("reloading page");
    //chrome.tabs.reload({'bypassCache': true});
    
-   chrome.tabs.getSelected(null, function(selectedTab) {
+   //chrome.tabs.getSelected(null, function(selectedTab) {
 	//  beginContentNegotiation(timegatePrefix + selectedTab.url);
-   });
+   //});
    return true;
   }
   
@@ -88,12 +89,12 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
     iconChangeTimout = null;
     chrome.browserAction.setBadgeText({text: ""});
   }
-  
+  console.log("not caught by listener");
 });
 
 
 
-function beginContentNegotiation(URI_Q){
+/*function beginContentNegotiation(URI_Q){
 		//if(ou != ""){console.log(URI_Q+" blocked for testing"); return "";}else {ou = URI_Q;}
 		console.log("*** BEGINNING CONTENT NEGOTIATION");
 		targetTime = localStorage["targetTime"];
@@ -101,7 +102,7 @@ function beginContentNegotiation(URI_Q){
 		console.log("URI-Q : "+URI_Q);
 	   
 		return mementoStart(URI_Q);
-}
+}*/
 	   
 function mementoStart(details){
 	//redirectResponseDetails = null;
@@ -139,6 +140,7 @@ var TG_FLAG;
 function test0(details){
 	console.log("Go to TEST-0");
 	console.log(details);
+	console.log(details.url);
 	/*console.log(redirectResponseDetails);
 	if(redirectResponseDetails && redirectResponseDetails[details.url]){ //a redirect had to be intercepted by Chrome. Ajax does not normally allow this
 		console.log("Going the redirect code path");
@@ -160,7 +162,7 @@ function test0(details){
 	//console.log(response.getAllResponseHeaders());
 	if(containsVaryAcceptDatetime){
 		TG_FLAG = true; console.log("TG-FLAG = TRUE");
-		URI_R = URI_Q; console.log("URI-R = URI-Q");
+		URI_R = details.url; console.log("URI-R = URI-Q");
 	}
 	console.log("Go to TEST-1");
 	return test1(details);
@@ -355,7 +357,7 @@ function test4(details){
 		//}
 		console.log("Preferred timegate is "+preferredTimegate);
 		console.log("Current URI-Q is "+details.url);
-		URI_Q = (preferredTimegate + "" + details.url);
+		//URI_Q = (preferredTimegate + "" + details.url);
 		console.log("Go to (return) mementoStart() with URI-Q="+preferredTimegate+details.url);
 		return preferredTimegate+details.url;
 		//mementoStart();
@@ -367,7 +369,7 @@ function displayMemento(URI_Q){
 	console.log("MEMENTO: "+URI_Q);
 	
 	if((URI_Q.search(originalURIQ) + originalURIQ.length) == URI_Q.length){	//check if current URIQ is originalURIQ
-		chrome.tabs.update(selectedTab.id,{url: URI_Q});
+		//chrome.tabs.update(selectedTab.id,{url: URI_Q});
 	}else { //otherwise, just return the new resource location
 		
 		//add the memento URI to an associative array with the key being the original URI
@@ -458,10 +460,14 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
     function(details) {
     	if( !listenerIsActive || targetTime == targetTime_default) {return {};}
     	
+    	if(details.url.indexOf(".ico") > -1){return {cancel: true};}
+    	
     	console.log("target time: "+targetTime);
-    	details.requestHeaders.push({"Accept-Datetime": targetTime});
+    	
+    	details.requestHeaders.push({name: "Accept-Datetime", value: targetTime});
+    	console.log("request details (next line): ");
     	console.log(details);
-    	return;
+    	return {requestHeaders:details.requestHeaders};
   
     	//prevent tabs that are not the currently active one from polluting the header array
   	    /*var requestIsFromCurrentTab = false;
@@ -563,20 +569,20 @@ function changeIcon(){
 chrome.tabs.onActivated.addListener(
   function(activeInfo) {
 	//exclude invalid URIs from entering the TimeGate fetching procedure
-    	
+    /*	
   	chrome.tabs.get(activeInfo.tabId, 
   		function(t){
 			if(t.url.indexOf("chrome://") != -1){return;}
   			var details = {};
   			details.url = t.url;
   			details.tabId = activeInfo.tabId;
-  			queryTimegate(details);
+  			//queryTimegate(details);
   		}
-  	);
+  	);*/
    }
 );
 
-function queryTimegate(details){
+/*function queryTimegate(details){
   if(details.url.indexOf("archive.org") != -1){	//we're viewing a memento now
 	  chrome.browserAction.setBadgeText({text: ""});
 	  if(clockState == 0){ //start the animation
@@ -587,6 +593,7 @@ function queryTimegate(details){
   }
   
   if( listenerIsActive ){
+     console.log("queryingtmegate");
      if(details.url.indexOf("chrome://") > -1 || details.url.indexOf("chrome-devtools://") > -1){return;}
   	 $.ajax({
   		url: timemapPrefix+details.url,
@@ -619,29 +626,41 @@ function queryTimegate(details){
   		//oldTachyonCode(details);
 	 });
 	} //fi
-}
+}*/
 
 chrome.webRequest.onHeadersReceived.addListener(
 	function(details){		
 		 if( listenerIsActive && targetTime != targetTime_default) {
-			console.log("Headers received");
+			console.log("Headers received, response details (next line):");
 			console.log(details);
+			console.log("Other side");
 			var newURI = mementoStart(details);
 			details.url = newURI;
 			console.log("New URI is "+newURI);
 			//return {responseHeaders: details.responseHeaders };
-			if(newURI != details.url){
-				chrome.tabs.getSelected(null, function(selectedTab) {
-					chrome.tabs.update(selectedTab.id, {url: newURI});
-   			 	});
+			console.log(newURI+ " --- "+ details.url);
+			//if(newURI != details.url){
+					//chrome.tabs.update({url: newURI});
+					console.log("Updating uri to "+newURI);
+   			 //}
+   			 details.statusLine = "HTTP/1.1 302 Found";
+   			 details.url = newURI;
+   
+   			 var isHTML = false;		  
+			 for(var h in details.responseHeaders){
+				if(details.responseHeaders[h].name == "Content-Type" && details.responseHeaders[h].value == "text/html"){isHTML = true; break;}
+			 }
+   			 if(isHTML){
+   			 	chrome.runtime.sendMessage({method: "forwardTo", forwardToUrl: newURI });
    			 }
-   			 return {redirectUrl: newURI};
-   			 return {cancel: true};
+   			 //return {redirectUrl: newURI}; //this doesn't work
+   			 //return {responseHeaders:details.responseHeaders};  
+   			 //return {cancel: true,redirectUrl: newURI};
+			//return {cancel: true};
 		}
 	}, 
     {
-     urls:["http://*/*", "https://*/*"],
-     types: ["main_frame", "sub_frame", "stylesheet", "script", "image", "object", "xmlhttprequest", "other"]
+     urls:["http://*/*", "https://*/*"]
    },
    ["blocking","responseHeaders"]
 );
@@ -669,6 +688,7 @@ function MementoCollection(){
 function getNumberOfMementos(timemap,tabId){
 	//mementos = timemap.match(/rel="(.*?)memento"/g);
 	//console.log(mementos.length);
+	return;
 	m2 = timemap.match(/<(.*)>;rel="(.*)memento"/gm);
 	mementos[tabId] = [];
 	for(var m in m2){

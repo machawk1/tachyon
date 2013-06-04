@@ -1,24 +1,25 @@
 $(document).ready(function(){
   chrome.runtime.sendMessage({method: "getMementosForCurrentTab"}, function(response) {
 	  if(!(response.mementos)){console.log(response);$("#datePickerUI, #topui").effect("fade","slow"); $("#loading").hide();return;}
-	  var dates = extractMementosDatetimesFromMementos(response.mementos);
-	  var dropdownOptions = "\n\t<option value=\""+response.uri+"\">live</option>";
-	  for(var m=dates.length-1; m>=0; m--){
-		  dropdownOptions = dropdownOptions+"\n\t<option title=\""+extractMementosDatetimeFromURI(response.mementos[m].uri)+"\"value=\""+response.mementos[m].uri+"\">"+dates[m].toString()+"</option>";
-	  }
+	  //var dates = extractMementosDatetimesFromMementos(response.mementos);
+	  //var dropdownOptions = "\n\t<option value=\""+response.uri+"\">live</option>";
+	  //for(var m=dates.length-1; m>=0; m--){
+		  //dropdownOptions = dropdownOptions+"\n\t<option title=\""+extractMementosDatetimeFromURI(response.mementos[m].uri)+"\"value=\""+response.mementos[m].uri+"\">"+dates[m].toString()+"</option>";
+	 // }
 	  
 	  
 	  $('body').prepend("<div id=\"topui\"><h3>Seed URI: "+response.uri+"</h3>"+
-		"<h3 id=\"activeMemento\">Displayed Memento: <span>live</span></h3>"+
-		"<label for=\"availableMementos\">Available Mementos:</label><br />"+
-		"<div id=\"timeControl\"><button id=\"prev\">&#8610;</button><select id=\"availableMementos\">"+dropdownOptions+"</select><button id=\"next\">&#8611;</button>"+
-			"<button id=\"goToMemento\">Go!</button>"+
-			"<button id=\"lock\">Lock</button>"+
+		//"<h3 id=\"activeMemento\">Displayed Memento: <span>live</span></h3>"+
+		//"<label for=\"availableMementos\">Available Mementos:</label><br />"+
+		//"<div id=\"timeControl\"><button id=\"prev\">&#8610;</button><select id=\"availableMementos\">"+dropdownOptions+"</select><button id=\"next\">&#8611;</button>"+
+		//	"<button id=\"goToMemento\">Go!</button>"+
+		//	"<button id=\"lock\">Lock</button>"+
 		"</div></div>"
 	   );
 	  $("#datePickerUI, #topui").effect("fade","slow");
 	  $("#loading").hide();
-	  updateNextPrevButtons();
+	  
+	  /*updateNextPrevButtons();
 	  
 	  $("#goToMemento").click(function(){
 		chrome.tabs.executeScript(null,
@@ -33,6 +34,7 @@ $(document).ready(function(){
 		if($("#availableMementos").prop("selectedIndex") == ($("#availableMementos > option").length - 1)){$("#next").attr("disabled","disabled");}
 		else {$("#next").removeAttr("disabled");}
 	  }
+	  
 	  
 	  $("#availableMementos").change(updateNextPrevButtons);
 	  $("#next").click(function(){
@@ -59,7 +61,7 @@ $(document).ready(function(){
 			$(this).addClass("pressed");
 			$("#goToMemento").attr("disabled","disabled");
 		  }
-	  });
+	  });*/
      
   });
  
@@ -96,8 +98,9 @@ $(document).ready(function(){
     chrome.extension.sendMessage({disengageTimeGate: true});
     self.close();
   });
-  $('#runTests').click(runTests);
+  //$('#runTests').click(runTests);
   
+  /*
   chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
     if (msg.method == "updateDropDown") {
       console.log("Updating dropdown with datetime "+msg.datetime);
@@ -113,8 +116,17 @@ $(document).ready(function(){
 	  });
 
     }
-  });
+  });*/
 
+});
+
+chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
+	if (msg.method == "forwardTo") {
+		//window.location = request.forwardToUrl;
+		console.log("Forwarding to "+msg.forwardToUrl);
+        chrome.tabs.executeScript(null,
+			{code:"window.location = \""+msg.forwardToUrl+"\""});
+    }
 });
 
 
@@ -163,6 +175,7 @@ var test3 = "3";
 var test4 = "4";
 
 function runTests(){
+	return;
 	//TEST1
 	var test1 = new TestCase();
 	test1.description = "Calling an original resource with the default timegate";
