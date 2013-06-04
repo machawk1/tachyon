@@ -56,6 +56,8 @@ function getResourceMemento(uri){
 }
     	
 
+var ou = ""; //dev test to see if it's the original URI being queried;
+
 chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
   console.log("*** EXECUTING LISTENER");
   console.log(msg);
@@ -70,108 +72,58 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
    localStorage["targetTime"] = msg.tt;
    targetTime = msg.tt;
    chrome.tabs.reload();
-   beginContentNegotiation();
+   chrome.tabs.getSelected(null, function(selectedTab) {
+	  beginContentNegotiation(timegatePrefix + selectedTab.url);
+   });
+   return;
   }
 
-  function addToURIQueue(uri){
-  	 uriQueue.push(uri);
-  	 waitForSemaphore();
-  	 function waitForSemaphore(){
-  	 	if(semaphoreLock){
-  	 		setTimeout(waitForSemaphore,(Math.random()*2)+1);
-  	 		//console.log(uriStack[0] +" is waiting");
-  	 	}else {
-  	 		console.log("No wait, go-head to "+uriQueue[0]);
-  	 		semaphoreLock = true;
-  	 		beginContentNegotiation();
-  	 	}
-  	 }  	 	
-  }
 
-  function beginContentNegotiation(){
-  	 
-  	 
+
+  function beginContentNegotiation(URI_Q){
+	 //if(ou != ""){console.log(URI_Q+" blocked for testing"); return "";}else {ou = URI_Q;}
   	 console.log("*** BEGINNING CONTENT NEGOTIATION");
      targetTime = localStorage["targetTime"];
 	 timeTravel = true;
 
-	 //targetTime = datetime;
-
-	 chrome.tabs.getSelected(null, function(selectedTab) {
-	   var URI_Q;
-	   //hard-coding is no way to go, as it will fail when mementos aren't from api.wayback.archive.org
-	   // this was done to remedy the second query, which has the below prepended to the URI, which is prepended by timegateprefix
-	   // e.g. "http://mementoproxy.lanl.gov/aggr/timegate/http://api.wayback.archive.org/memento/201301010101/http://matkelly.com"
-	   var targetURL = selectedTab.url.replace(/http:\/\/api\.wayback\.archive\.org\/memento\/[0-9]+\//,"");
-
-	   if(originalURIQ == ""){
-	   	URI_Q = targetURL;
-	   	originalURIQ = targetURL;
-	   	console.log("Setting originalURIQ to "+targetURL);
-	   	console.log("Set URI_Q from targetURL: "+URI_Q);
-	   	
-	   	if(URI_Q.match(/http(s)*:\/\//gi).length > 1){	//prevent memento-within-memento query
-	   		URI_Q = URI_Q.substr(URI_Q.indexOf("http",5));
-	   	}
-	   }
-	   
-	   if(!URI_Q){
-	   	URI_Q = uriQueue.shift();
-	   	console.log("Set URI_Q from stack: "+URI_Q);
-	   	}	//get a saved URI
-	   
-	   console.log("URI-Q here is "+URI_Q);
-	   
-	   //KEEP THIS: it works for memento-in-memento detection but also kills good mResources
-	 /*  if(URI_Q.match(/http(s)*:\/\//gi).length > 1){ //getting original URI-Q, as we're currently viewing a memento
-	   	console.log("memento within memento");
-	   	console.log(URI_Q.indexOf("http",5));
-	   	console.log(URI_Q.substr(URI_Q.indexOf("http",5)));
-	   	URI_Q = URI_Q.substr(URI_Q.indexOf("http",5));
-	   }
-	   */
-	   
-	   
-	   
-	   changeIcon("clear");
 	   console.log("URI-Q : "+URI_Q);
 	   
-	   mementoStart();
+	   return mementoStart(URI_Q);
 	   
-	   function mementoStart(){
-	   		redirectResponseDetails = null;
-	   	   if(originalURIQ == ""){
+	   function mementoStart(URI_Q){
+	   		//redirectResponseDetails = null;
+	   	   /*if(originalURIQ == ""){
 	   	   	console.log("Setting originalURIQ to "+URI_Q);
-	   	   	originalURIQ = URI_Q;}
+	   	   	originalURIQ = URI_Q;}*/
 	   	   
 		   console.log("-------------\nSTART:\n-------------");
 	   	   console.log("HEAD URI-Q ("+(URI_Q)+") with Accept-Datetime value "+targetTime)
 		   xhr = $.ajax({
 			type:"HEAD",
 			url:URI_Q,
-			headers: {'Accept-Datetime':targetTime}
+			headers: {'Accept-Datetime':targetTime}//,'Access-Control-Expose-Headers': 'Location'
 			//,
 			//async: false
-		   }).done(test0)
+		   }).done(//test0)
+		   	function(d,t,x){
+		   		console.log(x.getAllResponseHeaders());
+		   		test0(URI_Q,d,t,x);
+		   	})
 		   .fail(function(d) { 
 		   		console.log("Ajax Request error"); 
-		   		/*console.log(d);
-		   	   	   if(xhr){
-					console.log("cancelling last run's ajax request");
-					xhr.abort(); xhr = null;
-					return;
-				   }	//clear a previous ajax request if it exists*/
+		   		console.log(d);
+		   		console.log(d.getAllResponseHeaders());
 		   })
 		   .always(function() { 
 		   		console.log("Ajax request complete"); 
-		   		//console.log("ending URI-Q = "+URI_Q);
 		   	});
 		}
 	  var TG_FLAG;
 	  
-	  function test0(message,text,response){
+	  function test0(URI_Q,message,text,response){
 	  		console.log("Go to TEST-0");
-			if(redirectResponseDetails != null){ //a redirect had to be intercepted by Chrome. Ajax does not normally allow this
+	  		console.log(redirectResponseDetails);
+			if(redirectResponseDetails && redirectResponseDetails[URI_Q]){ //a redirect had to be intercepted by Chrome. Ajax does not normally allow this
 				console.log("Going the redirect code path");
 				console.log(redirectResponseDetails);
 				test0_redirect();
@@ -189,10 +141,10 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 				URI_R = URI_Q; console.log("URI-R = URI-Q");
 			}
 			console.log("Go to TEST-1");
-			test1(response);
+			test1(URI_Q,response);
 	}
 		
-	function test0_redirect(){
+	/*function test0_redirect(){
 		console.log("-------------\nTEST-0 R\n-------------");
 		console.log(redirectResponseDetails);
 		var headers = Array();
@@ -257,7 +209,7 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 			//test3(response); //should never get here
 			return;
 		}
-	}
+	}*/
 	
 	function follow(loc){
 			console.log("-------------\nFOLLOW\n-------------");
@@ -287,8 +239,10 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 		
 		var mCollection = null;
 		
-		function test1(response){
+		function test1(URI_Q,response){
 			console.log("-------------\nTEST-1\n-------------");
+			console.log(response);
+			console.log(response.getAllResponseHeaders());
 			var uriQIsAMemento = (response.getResponseHeader('Memento-Datetime') != null);
 			console.log("URI-Q is a Memento? "+uriQIsAMemento+" "+response.getResponseHeader('Memento-Datetime'));
 			if(uriQIsAMemento){
@@ -308,31 +262,31 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 				console.log("URI-Q: "+URI_Q);
 			}else {
 				console.log("Go to TEST-2");
-				test2(response);
+				test2(URI_Q,response);
 			}
 		}
 		
-		function test2(response){
+		function test2(URI_Q,response){
 			console.log("-------------\nTEST-2\n-------------");
 			var responseFromURIQA3XX = (response.status >= 300 && response.status < 400);
 			console.log("resp3xx: "+responseFromURIQA3XX);
 			if(responseFromURIQA3XX){follow(response);}
 			else {
 				console.log("Go to TEST-3");
-				test3(response);
+				test3(URI_Q,response);
 			}
 		}
 		
-		function test3(response){
+		function test3(URI_Q,response){
 			console.log("-------------\nTEST-3\n-------------");
 		   if(TG_FLAG && response.status >= 400 && response.status < 600){
 		   	alert("TimeGate or Memento error. How does the user agent handle this?");
 		   }else {
-		   	test4(response);
+		   	test4(URI_Q,response);
 		   }
 		}
 		
-		function test4(response){
+		function test4(URI_Q,response){
 			console.log("-------------\nTEST-4\n-------------");
 			
 			//get link HTTP header, parse out rel="timegate", if it exists, set boolean on next line (hard-coded for now)
@@ -346,6 +300,7 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 			
 			TG_FLAG = true;
 			URI_R = URI_Q;
+			return;
 			if(responseHasTimegateLinkPointingAtURI_G){
 				var timegateRegExResult = response.getResponseHeader("Link").match("<(.*)>");
 				URI_G = timegateRegExResult[1];
@@ -366,7 +321,7 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 			}
 		}
 		
-		function displayMemento(){
+		function displayMemento(URI_Q){
 			console.log("SUCCESS");
 			console.log("MEMENTO: "+URI_Q);
 			
@@ -395,8 +350,8 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 			chrome.extension.sendMessage({method: 'updateDropDown',datetime: dateMatch, mCollection: mCollection });
 			console.log(dateMatch);
 		}
-    })
-  }
+    }
+  
   
   
   if (msg.disengageTimeGate) {
@@ -431,6 +386,15 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 chrome.webRequest.onBeforeRequest.addListener(
   
   function(details){
+  	if(ou != details.url){return;}
+  	console.log("in onbeforerequest");
+  	console.log(details);
+	//console.log("Changing "+details.url+" to "+(timegatePrefix + details.url));
+    x = beginContentNegotiation(details.url); //testing);
+    console.log(details.url+" resolved to "+x);
+    
+    if(x == ""){return;}
+    return;
 	//prevent tabs that are not the currently active one from polluting the header array
   	/*var requestIsFromCurrentTab = false;
     chrome.tabs.getSelected(null, function(selectedTab) {
@@ -465,6 +429,9 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
     	if( !listenerIsActive || targetTime == targetTime_default) {
     		console.log("Fell into conditional for "+details.url+"  "+!listenerIsActive +" || "+ (targetTime == targetTime_default));
     	return {};}
+    	return;
+    	console.log("XXXXXXXXX");
+    	
     	
     	if(	!originalURIQ || !details.url ||
     		(details.url.search(originalURIQ) + originalURIQ.length) == details.url.length){
@@ -487,7 +454,8 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
     	}else if(originalURIQ && details.tabId == -1){//ignore the first ajax request
     	    console.log("ignoring the ajax-based uri seed content negotation request");
     	} else {
-    		beginContentNegotiation(details.url);
+    		console.log("YYYYYY");
+    		//beginContentNegotiation(details.url);
     	}
     	
     	//check out the DOM and replace all resources when available. This can be asyncrhonous
@@ -515,10 +483,14 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
     ['requestHeaders','blocking']
  );
 
-var redirectResponseDetails = null;
+var redirectResponseDetails = new Array();
 
 chrome.webRequest.onBeforeRedirect.addListener(
 	function(details){	
+		console.log("* **Redirecting");
+		console.log(details);
+		return;
+		
 		if(details.url != details.redirectUrl){ //for some reason the enclosing handler is fired even when there is no true 3XX redirect, see http://odusource.cs.odu.edu/hello
 			if(details.method == "HEAD"){ //only the extension's HEAD requests will count, not the subsequent GETs
 				redirectResponseDetails = details;
@@ -535,21 +507,11 @@ chrome.webRequest.onBeforeRedirect.addListener(
 
 chrome.webRequest.onResponseStarted.addListener(
 	function(details){
-		//console.log("responsestarted "+details.url+" listener active: "+listenerIsActive+"  targettime: "+targetTime);
 		 if( !listenerIsActive || targetTime == targetTime_default){return {};}
-		//console.log("*** onresponsestarted");
-		//console.log(details);
-		return;
-		
-		for(var rHeader in details.responseHeaders){
-			if(details.responseHeaders[rHeader].name.toUpperCase() == "MEMENTO-DATETIME"){
-				URI_Q = details.url;
-				console.log("new URI-Q: "+URI_Q);
-				return;
-				beginContentNegotiation();
-				break;
-			}
-		}
+		 console.log("RESPONSE STARTED");
+		 console.log(details);
+
+		 return;
 	},
 	{
 		urls: ["http://*/*", "https://*/*"]
