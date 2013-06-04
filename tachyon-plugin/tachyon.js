@@ -25,14 +25,13 @@ function toggleActive(tab) {
         listenerIsActive = true;
         chrome.browserAction.setIcon({path:"icon-on-19.png"});
         chrome.browserAction.setPopup({popup: "popup.html"});
-        chrome.tabs.reload(tab.id);
+        chrome.tabs.reload(tab.id,{'bypassCache': true});
     }
 }
 
 chrome.browserAction.onClicked.addListener(toggleActive);
 var timeTravel = false;
-var uriQueue = [];
-var semaphoreLock = true;
+
 
 function getResourceMemento(uri){
 	if(!resourceMementos[uri]){
@@ -71,78 +70,101 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
   if(msg.method == "setDate"){
    localStorage["targetTime"] = msg.tt;
    targetTime = msg.tt;
-   chrome.tabs.reload();
+   //console.log("reloading page");
+   //chrome.tabs.reload({'bypassCache': true});
+   
    chrome.tabs.getSelected(null, function(selectedTab) {
-	  beginContentNegotiation(timegatePrefix + selectedTab.url);
+	//  beginContentNegotiation(timegatePrefix + selectedTab.url);
    });
-   return;
+   return true;
   }
+  
+  if (msg.disengageTimeGate) {
+    console.log("Disengage TimeGate...");
+    chrome.tabs.getSelected(null, function(selectedTab) {
+      toggleActive(selectedTab);
+    });
+    clearTimeout(iconChangeTimeout);
+    iconChangeTimout = null;
+    chrome.browserAction.setBadgeText({text: ""});
+  }
+  
+});
 
 
 
-  function beginContentNegotiation(URI_Q){
-	 //if(ou != ""){console.log(URI_Q+" blocked for testing"); return "";}else {ou = URI_Q;}
-  	 console.log("*** BEGINNING CONTENT NEGOTIATION");
-     targetTime = localStorage["targetTime"];
-	 timeTravel = true;
-
-	   console.log("URI-Q : "+URI_Q);
+function beginContentNegotiation(URI_Q){
+		//if(ou != ""){console.log(URI_Q+" blocked for testing"); return "";}else {ou = URI_Q;}
+		console.log("*** BEGINNING CONTENT NEGOTIATION");
+		targetTime = localStorage["targetTime"];
+		timeTravel = true;
+		console.log("URI-Q : "+URI_Q);
 	   
-	   return mementoStart(URI_Q);
+		return mementoStart(URI_Q);
+}
 	   
-	   function mementoStart(URI_Q){
-	   		//redirectResponseDetails = null;
-	   	   /*if(originalURIQ == ""){
-	   	   	console.log("Setting originalURIQ to "+URI_Q);
-	   	   	originalURIQ = URI_Q;}*/
-	   	   
-		   console.log("-------------\nSTART:\n-------------");
-	   	   console.log("HEAD URI-Q ("+(URI_Q)+") with Accept-Datetime value "+targetTime)
-		   xhr = $.ajax({
-			type:"HEAD",
-			url:URI_Q,
-			headers: {'Accept-Datetime':targetTime}//,'Access-Control-Expose-Headers': 'Location'
-			//,
-			//async: false
-		   }).done(//test0)
-		   	function(d,t,x){
-		   		console.log(x.getAllResponseHeaders());
-		   		test0(URI_Q,d,t,x);
-		   	})
-		   .fail(function(d) { 
-		   		console.log("Ajax Request error"); 
-		   		console.log(d);
-		   		console.log(d.getAllResponseHeaders());
-		   })
-		   .always(function() { 
-		   		console.log("Ajax request complete"); 
-		   	});
-		}
-	  var TG_FLAG;
+function mementoStart(details){
+	//redirectResponseDetails = null;
+	/*if(originalURIQ == ""){
+	console.log("Setting originalURIQ to "+URI_Q);
+	originalURIQ = URI_Q;}*/
+
+	console.log("-------------\nSTART:\n-------------");
+	console.log("HEAD URI-Q ("+details.url+") with Accept-Datetime value "+targetTime);
+	return test0(details);
+	/*xhr = $.ajax({
+	type:"HEAD",
+	url:URI_Q,
+	headers: {'Accept-Datetime':targetTime}//,'Access-Control-Expose-Headers': 'Location'
+	//,
+	//async: false
+	}).done(//test0)
+	function(d,t,x){
+		console.log(x.getAllResponseHeaders());
+		test0(URI_Q,d,t,x);
+	})
+	.fail(function(d) { 
+		console.log("Ajax Request error"); 
+		console.log(d);
+		console.log(d.getAllResponseHeaders());
+	})
+	.always(function() { 
+		console.log("Ajax request complete"); 
+	});*/
+}
+
+
+var TG_FLAG;
 	  
-	  function test0(URI_Q,message,text,response){
-	  		console.log("Go to TEST-0");
-	  		console.log(redirectResponseDetails);
-			if(redirectResponseDetails && redirectResponseDetails[URI_Q]){ //a redirect had to be intercepted by Chrome. Ajax does not normally allow this
-				console.log("Going the redirect code path");
-				console.log(redirectResponseDetails);
-				test0_redirect();
-				return;
-			} 		  
-			var containsVaryAcceptDatetime = 
-				(response.getResponseHeader('Vary') != null) && 
-				(response.getResponseHeader('Vary') != "null") &&
-				(response.getResponseHeader('Vary').toUpperCase().indexOf("ACCEPT-DATETIME") > -1);
-			console.log("-------------\nTEST-0\n-------------");
-			console.log("Response from URI-Q contain Vary: accept-datetime? "+containsVaryAcceptDatetime);
-			console.log(response.getAllResponseHeaders());
-			if(containsVaryAcceptDatetime){
-				TG_FLAG = true; console.log("TG-FLAG = TRUE");
-				URI_R = URI_Q; console.log("URI-R = URI-Q");
-			}
-			console.log("Go to TEST-1");
-			test1(URI_Q,response);
+function test0(details){
+	console.log("Go to TEST-0");
+	console.log(details);
+	/*console.log(redirectResponseDetails);
+	if(redirectResponseDetails && redirectResponseDetails[details.url]){ //a redirect had to be intercepted by Chrome. Ajax does not normally allow this
+		console.log("Going the redirect code path");
+		console.log(redirectResponseDetails);
+		test0_redirect();
+		return;
+	} */
+	
+	var containsVaryAcceptDatetime = false;		  
+	for(var h in details.responseHeaders){
+		if(details.responseHeaders[h].name == "Vary"){containsVaryAcceptDatetime = true; break;}
 	}
+	/*var containsVaryAcceptDatetime = 
+		(response.getResponseHeader('Vary') != null) && 
+		(response.getResponseHeader('Vary') != "null") &&
+		(response.getResponseHeader('Vary').toUpperCase().indexOf("ACCEPT-DATETIME") > -1);*/
+	console.log("-------------\nTEST-0\n-------------");
+	console.log("Response from URI-Q contain Vary: accept-datetime? "+containsVaryAcceptDatetime);
+	//console.log(response.getAllResponseHeaders());
+	if(containsVaryAcceptDatetime){
+		TG_FLAG = true; console.log("TG-FLAG = TRUE");
+		URI_R = URI_Q; console.log("URI-R = URI-Q");
+	}
+	console.log("Go to TEST-1");
+	return test1(details);
+}
 		
 	/*function test0_redirect(){
 		console.log("-------------\nTEST-0 R\n-------------");
@@ -210,159 +232,165 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
 			return;
 		}
 	}*/
+var mCollection = null;
 	
-	function follow(loc){
-			console.log("-------------\nFOLLOW\n-------------");
-			URI_Q = loc;console.log("URI_Q = Location (value of HTTP header) = "+loc);
-			console.log("Going to START");
-			mementoStart();
-		}
+function follow(loc){
+	console.log("-------------\nFOLLOW\n-------------");
+	URI_Q = loc;console.log("URI_Q = Location (value of HTTP header) = "+loc);
+	console.log("Going to START");
+	mementoStart();
+}
+
+function getNextPrevMementos(linkHeader){
+	var temporalMarkings = linkHeader.match(/<(.*?)[0-9]{14}(.*?)>;rel=(.*?)datetime="(.*?)"/g);
+	var mCollection = new MementoCollection();
+	for(var m=1; m<temporalMarkings.length; m++){
+		var uri = temporalMarkings[m].match(/<(.*)>/);
+		uri = uri[1];
+		//console.log(uri);
+		var rel = temporalMarkings[m].match(/rel="(.*)";/);
+		rel = rel[1];
+		//console.log(rel);
+		var memento = new Memento(uri);
+		if(rel.indexOf("last") > -1){mCollection.last = memento;}
+		else if(rel.indexOf("first") > -1){mCollection.first = memento;}
+		else if(rel.indexOf("prev") > -1){mCollection.prev = memento;}
+		else if(rel.indexOf("next") > -1){mCollection.next = memento;}
+	}
+	return mCollection;
+}
+
+
+
+function test1(details){
+	console.log("-------------\nTEST-1\n-------------");
 	
-		function getNextPrevMementos(linkHeader){
-			var temporalMarkings = linkHeader.match(/<(.*?)[0-9]{14}(.*?)>;rel=(.*?)datetime="(.*?)"/g);
-			var mCollection = new MementoCollection();
-			for(var m=1; m<temporalMarkings.length; m++){
-				var uri = temporalMarkings[m].match(/<(.*)>/);
-				uri = uri[1];
-				//console.log(uri);
-				var rel = temporalMarkings[m].match(/rel="(.*)";/);
-				rel = rel[1];
-				//console.log(rel);
-				var memento = new Memento(uri);
-				if(rel.indexOf("last") > -1){mCollection.last = memento;}
-				else if(rel.indexOf("first") > -1){mCollection.first = memento;}
-				else if(rel.indexOf("prev") > -1){mCollection.prev = memento;}
-				else if(rel.indexOf("next") > -1){mCollection.next = memento;}
-			}
-			return mCollection;
+	var uriQIsAMemento = false;
+	for(var h in details.responseHeaders){
+		if(details.responseHeaders[h].name == "Memento-Datetime"){uriQIsAMemento = true; break;}
+	}
+
+	console.log("URI-Q is a Memento? "+uriQIsAMemento);
+	if(uriQIsAMemento){
+		try{
+			mCollection = getNextPrevMementos(response.getResponseHeader("Link"));
+		}catch(err){}
+		TG_FLAG = false; console.log("  Setting TG-FLAG = FALSE");
+		URI_R = ""; console.log("  Setting URI-R = blank");
+		var responseFromURIQA3XX = (response.status >= 300 && response.status < 400);
+		console.log(" Is response from URI-Q a 3xx: "+responseFromURIQA3XX+" "+response.status);
+		if(responseFromURIQA3XX){follow(response);}
+		else {
+			displayMemento();
 		}
 		
-		var mCollection = null;
 		
-		function test1(URI_Q,response){
-			console.log("-------------\nTEST-1\n-------------");
-			console.log(response);
-			console.log(response.getAllResponseHeaders());
-			var uriQIsAMemento = (response.getResponseHeader('Memento-Datetime') != null);
-			console.log("URI-Q is a Memento? "+uriQIsAMemento+" "+response.getResponseHeader('Memento-Datetime'));
-			if(uriQIsAMemento){
-				try{
-					mCollection = getNextPrevMementos(response.getResponseHeader("Link"));
-				}catch(err){}
-				TG_FLAG = false; console.log("  Setting TG-FLAG = FALSE");
-				URI_R = ""; console.log("  Setting URI-R = blank");
-				var responseFromURIQA3XX = (response.status >= 300 && response.status < 400);
-				console.log(" Is response from URI-Q a 3xx: "+responseFromURIQA3XX+" "+response.status);
-				if(responseFromURIQA3XX){follow(response);}
-				else {
-					displayMemento();
-				}
-				
-				
-				console.log("URI-Q: "+URI_Q);
-			}else {
-				console.log("Go to TEST-2");
-				test2(URI_Q,response);
-			}
-		}
+		console.log("URI-Q: "+details.url);
+	}else {
+		console.log("Go to TEST-2");
+		return test2(details);
+	}
+}
 		
-		function test2(URI_Q,response){
-			console.log("-------------\nTEST-2\n-------------");
-			var responseFromURIQA3XX = (response.status >= 300 && response.status < 400);
-			console.log("resp3xx: "+responseFromURIQA3XX);
-			if(responseFromURIQA3XX){follow(response);}
-			else {
-				console.log("Go to TEST-3");
-				test3(URI_Q,response);
-			}
-		}
+function test2(details){
+	console.log("-------------\nTEST-2\n-------------");
+	console.log(details);
+	var responseCode = parseInt((details.statusLine.match(/[0-9]{3}/g))[0],10);
+	console.log(responseCode);
+	var responseFromURIQA3XX = (responseCode >= 300 && response.status < responseCode);
+	console.log("resp3xx: "+responseFromURIQA3XX);
+	if(responseFromURIQA3XX){follow(details);}
+	else {
+		console.log("Go to TEST-3");
+		return test3(details,responseCode);
+	}
+}
 		
-		function test3(URI_Q,response){
-			console.log("-------------\nTEST-3\n-------------");
-		   if(TG_FLAG && response.status >= 400 && response.status < 600){
-		   	alert("TimeGate or Memento error. How does the user agent handle this?");
-		   }else {
-		   	test4(URI_Q,response);
-		   }
+function test3(details,responseCode){
+   console.log("-------------\nTEST-3\n-------------");
+   if(TG_FLAG && responseCode >= 400 && responseCode < 600){
+	alert("TimeGate or Memento error. How does the user agent handle this?");
+   }else {
+    console.log("TG_FLAG && responseCode >= 400 && responseCode < 600: NO, respCode: "+responseCode);
+    console.log("Go to TEST-4");
+	return test4(details);
+   }
+}
+
+function test4(details){
+	console.log("-------------\nTEST-4\n-------------");
+	var responseHasTimegateLink = false;
+	var responseTimegateLinkValue = "";
+	for(var h in details.responseHeaders){
+		if(details.responseHeaders[h].name == "Link"){
+			responseHasTimegateLink = true; 
+			responseTimegateLinkValue = details.responseHeaders[h].value;
+			break;
 		}
+	}
+	
+	
+	//get link HTTP header, parse out rel="timegate", if it exists, set boolean on next line (hard-coded for now)
+	console.log("Response Timegate Link Value: "+responseTimegateLinkValue);
+	var responseHasTimegateLinkPointingAtURI_G = 
+		responseHasTimegateLink &&
+		responseTimegateLinkValue.match(/rel=(.*)timegate/) != null;
+
+	URI_G = "http://api.wayback.archive.org/memento/timegate/"+details.url;
+	
+	TG_FLAG = true;
+	URI_R = details.url;
+	//return;
+	if(responseHasTimegateLinkPointingAtURI_G){
+		var timegateRegExResult = responseTimegateLinkValue.match("<(.*)>");
+		URI_G = timegateRegExResult[1];
+		console.log("URI-Q ("+details.url+") = URI-G ("+URI_G+")");
+		URI_Q = URI_G;
+		mementoStart(); //should this be here?
+	}else {
+		var preferredTimegate = localStorage["preferredTimegate"];
+		//if(!preferredTimegate){	//this value hasn't been set by the user. Set it here.
+		var	preferredTimegate = "http://mementoproxy.cs.odu.edu/aggr/timegate/";
+		//	localStorage["preferredTimegate"] = preferredTimegate;
+		//}
+		console.log("Preferred timegate is "+preferredTimegate);
+		console.log("Current URI-Q is "+details.url);
+		URI_Q = (preferredTimegate + "" + details.url);
+		console.log("Go to (return) mementoStart() with URI-Q="+preferredTimegate+details.url);
+		return preferredTimegate+details.url;
+		//mementoStart();
+	}
+}
+
+function displayMemento(URI_Q){
+	console.log("SUCCESS");
+	console.log("MEMENTO: "+URI_Q);
+	
+	if((URI_Q.search(originalURIQ) + originalURIQ.length) == URI_Q.length){	//check if current URIQ is originalURIQ
+		chrome.tabs.update(selectedTab.id,{url: URI_Q});
+	}else { //otherwise, just return the new resource location
 		
-		function test4(URI_Q,response){
-			console.log("-------------\nTEST-4\n-------------");
-			
-			//get link HTTP header, parse out rel="timegate", if it exists, set boolean on next line (hard-coded for now)
-			console.log(response.getResponseHeader("Link"));
-			var responseHasTimegateLinkPointingAtURI_G = 
-				response.getResponseHeader("Link") != null &&
-				response.getResponseHeader("Link").match(/rel=(.*)timegate/) != null;
-			//console.log(response.getResponseHeader("Link").match(/rel=(.*)timegate/));
-			//console.log(response.getResponseHeader("Link").match(/rel=(.*)timegate/) != null);
-			URI_G = "http://api.wayback.archive.org/memento/timegate/"+URI_Q;
-			
-			TG_FLAG = true;
-			URI_R = URI_Q;
-			return;
-			if(responseHasTimegateLinkPointingAtURI_G){
-				var timegateRegExResult = response.getResponseHeader("Link").match("<(.*)>");
-				URI_G = timegateRegExResult[1];
-				console.log("URI-Q ("+URI_Q+") = URI-G ("+URI_G+")");
-				URI_Q = URI_G;
-				mementoStart(); //should this be here?
-			}else {
-				var preferredTimegate = localStorage["preferredTimegate"];
-				//if(!preferredTimegate){	//this value hasn't been set by the user. Set it here.
-				var	preferredTimegate = "http://mementoproxy.cs.odu.edu/aggr/timegate/";
-				//	localStorage["preferredTimegate"] = preferredTimegate;
-				//}
-				console.log("Preferred timegate is "+preferredTimegate);
-				console.log("Current URI-Q is "+URI_Q);
-                URI_Q = (preferredTimegate + "" + URI_Q);
-                console.log("Go to mementoStart() with URI-Q="+URI_Q);
-				mementoStart();
-			}
-		}
-		
-		function displayMemento(URI_Q){
-			console.log("SUCCESS");
-			console.log("MEMENTO: "+URI_Q);
-			
-			if((URI_Q.search(originalURIQ) + originalURIQ.length) == URI_Q.length){	//check if current URIQ is originalURIQ
-				chrome.tabs.update(selectedTab.id,{url: URI_Q});
-				//originalURIQ = false;
-				semaphoreLock = false;
-			}else { //otherwise, just return the new resource location
-				
-				//add the memento URI to an associative array with the key being the original URI
-			   	var originalURI = URI_Q.substr(URI_Q.indexOf("http",5));
-			   	resourceMementos[originalURI] = URI_Q;
-				console.log("Got to displayMemento for "+URI_Q+",\n\t  original URI = "+originalURI);
-				
-				
-				semaphoreLock = false;
-			}
-			//	function(tab){} //potentially use this callback in the future
-			//);
-			//updatePopupTime();
-		}
-		
-		function updatePopupTime(){
-			dateMatch = URI_Q.match(/[0-9]{14}/);
-			dateMatch = dateMatch[0];
-			chrome.extension.sendMessage({method: 'updateDropDown',datetime: dateMatch, mCollection: mCollection });
-			console.log(dateMatch);
-		}
-    }
+		//add the memento URI to an associative array with the key being the original URI
+		var originalURI = URI_Q.substr(URI_Q.indexOf("http",5));
+		resourceMementos[originalURI] = URI_Q;
+		console.log("Got to displayMemento for "+URI_Q+",\n\t  original URI = "+originalURI);
+	}
+	//	function(tab){} //potentially use this callback in the future
+	//);
+	//updatePopupTime();
+}
+
+function updatePopupTime(){
+	dateMatch = URI_Q.match(/[0-9]{14}/);
+	dateMatch = dateMatch[0];
+	chrome.extension.sendMessage({method: 'updateDropDown',datetime: dateMatch, mCollection: mCollection });
+	console.log(dateMatch);
+}
+
   
   
   
-  if (msg.disengageTimeGate) {
-    console.log("Disengage TimeGate...");
-    chrome.tabs.getSelected(null, function(selectedTab) {
-      toggleActive(selectedTab);
-    });
-    clearTimeout(iconChangeTimeout);
-    iconChangeTimout = null;
-    chrome.browserAction.setBadgeText({text: ""});
-  }
+  
   
   /*if( msg.setTargetTime ) {
     console.log("Setting date "+msg.targetTime);
@@ -384,10 +412,12 @@ chrome.extension.onMessage.addListener(function(msg, _, sendResponse) {
    HEADER HANDLERS AND MANIPULATION
    VVVVVVVVVVVVVVVVVVVVVVVVVVVVV */
 chrome.webRequest.onBeforeRequest.addListener(
-  
   function(details){
+  	if( !listenerIsActive || targetTime == targetTime_default){return;}
+    console.log("in onbeforerequest");
+
   	if(ou != details.url){return;}
-  	console.log("in onbeforerequest");
+  	console.log("in onbeforerequest"+details.url);
   	console.log(details);
 	//console.log("Changing "+details.url+" to "+(timegatePrefix + details.url));
     x = beginContentNegotiation(details.url); //testing);
@@ -413,10 +443,10 @@ chrome.webRequest.onBeforeRequest.addListener(
   },
   
   {
-    urls: ["http://*/*", "https://*/*"],
-    types: ["main_frame", "sub_frame", "stylesheet", "script", "image", "object", "xmlhttprequest", "other"]
-  },
-  ["blocking"]
+     urls:["<all_urls>"],
+     types: ["main_frame", "sub_frame", "stylesheet", "script", "image", "object", "xmlhttprequest", "other"]
+   },
+   ["blocking"]
 );
 
 //curl -I -H "Accept-Datetime: Sat, 03 Oct 2009 10:00:00 GMT" http://mementoproxy.lanl.gov/aggr/timegate/http://www.cnn.com/
@@ -426,42 +456,13 @@ chrome.webRequest.onBeforeRequest.addListener(
  */
 chrome.webRequest.onBeforeSendHeaders.addListener(
     function(details) {
-    	if( !listenerIsActive || targetTime == targetTime_default) {
-    		console.log("Fell into conditional for "+details.url+"  "+!listenerIsActive +" || "+ (targetTime == targetTime_default));
-    	return {};}
+    	if( !listenerIsActive || targetTime == targetTime_default) {return {};}
+    	
+    	console.log("target time: "+targetTime);
+    	details.requestHeaders.push({"Accept-Datetime": targetTime});
+    	console.log(details);
     	return;
-    	console.log("XXXXXXXXX");
-    	
-    	
-    	if(	!originalURIQ || !details.url ||
-    		(details.url.search(originalURIQ) + originalURIQ.length) == details.url.length){
-    			/*console.log(
-    				originalURIQ +"||"+
-    				(URI_Q.search(originalURIQ) + originalURIQ.length) +
-    				" == "+
-    				URI_Q.length);*/
-    			return;
-    			
-    		}
-		
-
-    	if(originalURIQ && details.tabId != -1){
-    		console.log(details.url+" to the queue");
-    		addToURIQueue(details.url);
-    		//while(!resourceMementos[details.url]){}
-    		//console.log("Redirect URI = "+resourceMementos[details.url]);
-    		
-    	}else if(originalURIQ && details.tabId == -1){//ignore the first ajax request
-    	    console.log("ignoring the ajax-based uri seed content negotation request");
-    	} else {
-    		console.log("YYYYYY");
-    		//beginContentNegotiation(details.url);
-    	}
-    	
-    	//check out the DOM and replace all resources when available. This can be asyncrhonous
-    	getResourceMemento(details.url);
-    	
-    	//return {cancel: true};
+  
     	//prevent tabs that are not the currently active one from polluting the header array
   	    /*var requestIsFromCurrentTab = false;
   	    
@@ -471,16 +472,11 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
         });
         if(!requestIsFromCurrentTab){return;}
     	*/
-    	//console.log("onbeforesendheaders");
-    	//console.log(details);
-    
-        //return {requestHeaders: details.requestHeaders};
     },
-    {
-       urls: ["http://*/*", "https://*/*"],
-       types: ["main_frame", "sub_frame", "stylesheet", "script", "image", "object", "xmlhttprequest", "other"]
-    },
-    ['requestHeaders','blocking']
+   {
+     urls:["http://*/*", "https://*/*"]
+   },
+   ["requestHeaders","blocking"]
  );
 
 var redirectResponseDetails = new Array();
@@ -489,7 +485,7 @@ chrome.webRequest.onBeforeRedirect.addListener(
 	function(details){	
 		console.log("* **Redirecting");
 		console.log(details);
-		return;
+		//return;
 		
 		if(details.url != details.redirectUrl){ //for some reason the enclosing handler is fired even when there is no true 3XX redirect, see http://odusource.cs.odu.edu/hello
 			if(details.method == "HEAD"){ //only the extension's HEAD requests will count, not the subsequent GETs
@@ -500,9 +496,10 @@ chrome.webRequest.onBeforeRedirect.addListener(
     	}
     },
     {
-       urls: ["http://*/*", "https://*/*"]
-    },
-    ['responseHeaders']
+     urls:["http://*/*", "https://*/*"],
+     types: ["main_frame", "sub_frame", "stylesheet", "script", "image", "object", "xmlhttprequest", "other"]
+   },
+   ["responseHeaders"]
 );
 
 chrome.webRequest.onResponseStarted.addListener(
@@ -532,7 +529,6 @@ chrome.webRequest.onCompleted.addListener(
 );
 
 
-});
 
 /* ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    END HEADER HANDLERS AND MANIPULATION
@@ -626,46 +622,29 @@ function queryTimegate(details){
 }
 
 chrome.webRequest.onHeadersReceived.addListener(
-	function(details){
+	function(details){		
 		 if( listenerIsActive && targetTime != targetTime_default) {
-			//console.log("Headers received");
-			//console.log(details);
+			console.log("Headers received");
+			console.log(details);
+			var newURI = mementoStart(details);
+			details.url = newURI;
+			console.log("New URI is "+newURI);
+			//return {responseHeaders: details.responseHeaders };
+			if(newURI != details.url){
+				chrome.tabs.getSelected(null, function(selectedTab) {
+					chrome.tabs.update(selectedTab.id, {url: newURI});
+   			 	});
+   			 }
+   			 return {redirectUrl: newURI};
+   			 return {cancel: true};
 		}
 	}, 
     {
      urls:["http://*/*", "https://*/*"],
      types: ["main_frame", "sub_frame", "stylesheet", "script", "image", "object", "xmlhttprequest", "other"]
    },
-   ["responseHeaders","blocking"]
+   ["blocking","responseHeaders"]
 );
-
-/*chrome.webRequest.onHeadersReceived.addListener(
-  function(details) {
-    strh = "";
-  	var isatimegate = false;
-  	var tg_flag = false;
-  	console.log(details);
-
-  	for(h in details.responseHeaders){
-  	  if(details.responseHeaders[h].name == "Vary" && details.responseHeaders[h].value.indexOf("accept-datetime") != -1){
-  	    isatimegate = true;
-  	    tg_flag = true;
-  	  }else if(details.responseHeaders[h].name == "Link"){
-  	    //	alert(details.responseHeaders[h].value);
-  	    //	alert(details.url);
-  	  }
-  	}
-     if(isatimegate){
-     	return;// {cancel: true;}
-     }
-     queryTimegate(details);
-   }, //noitcnuf*/
- //  {
- //    urls:["http://*/*", "https://*/*"],
- //    types:["main_frame"]
- //  },
- //  ["responseHeaders","blocking"]
-//);*/
 
 
 
@@ -681,6 +660,7 @@ function MementoCollection(){
 	this.first = null;
 	this.last = null;
 }
+
 
 
 
@@ -706,28 +686,3 @@ function getNumberOfMementos(timemap,tabId){
 }
 
 
-
-
-function oldTachyonCode(details){
-    tabRels[details.tabId] = {};
-    var headers = details.responseHeaders;
-    var isMemento = false;
-    console.log(headers.length+" headers");
-   // return;
-    /*for( var i = 0, l = headers.length; i < l; ++i ) {
-      console.log(headers[i].name+" "+headers[i].value);
-      if( headers[i].name == 'Link' ) {
-        while( matches = relRegex.exec(headers[i].value) ) {
-          console.log("tabRels: "+matches[2]+" -> "+matches[1]);
-          tabRels[details.tabId][matches[2]] = matches[1];
-        }
-      }
-      // According to spec, can use presence of this header as definitive indicator that this is a Memento, and therefore not a live URL.
-      if( headers[i].name == 'Memento-Datetime' ) {
-        console.log("Memento-Datetime: "+headers[i].value);
-        isMemento = true;
-        tabRels[details.tabId]["Memento-Datetime"] = headers[i].value;
-      }
-    } \\rof
-    */
-}
