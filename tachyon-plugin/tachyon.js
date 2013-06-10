@@ -112,26 +112,42 @@ function mementoStart(details){
 
 	console.log("-------------\nSTART:\n-------------");
 	console.log("HEAD URI-Q ("+details.url+") with Accept-Datetime value "+targetTime);
-	return test0(details);
-	/*xhr = $.ajax({
-	type:"HEAD",
-	url:URI_Q,
-	headers: {'Accept-Datetime':targetTime}//,'Access-Control-Expose-Headers': 'Location'
-	//,
-	//async: false
+	//return test0(details);
+	xhr = $.ajax({
+		type:"HEAD",
+		url:details.url,
+		headers: {'Accept-Datetime':targetTime},//,'Access-Control-Expose-Headers': 'Location'
+		async: false/*,
+		statusCode: {
+			302: function(){
+				console.log("Caught 302!");
+			},
+			200: function(){
+				console.log("Caught 200!");
+			}
+		}*/
 	}).done(//test0)
 	function(d,t,x){
+		//console.log(x.getAllResponseHeaders());
+		console.log(d);
+		console.log(t);
+		console.log(x);
 		console.log(x.getAllResponseHeaders());
-		test0(URI_Q,d,t,x);
+		x.url = details.url;
+		test0(x);
 	})
 	.fail(function(d) { 
 		console.log("Ajax Request error"); 
 		console.log(d);
 		console.log(d.getAllResponseHeaders());
 	})
-	.always(function() { 
+	.always(function(a,b,c) { 
 		console.log("Ajax request complete"); 
-	});*/
+		console.log(a);
+		console.log(b);
+		console.log(c);
+		console.log(c.getAllResponseHeaders());
+	});
 }
 
 
@@ -139,8 +155,8 @@ var TG_FLAG;
 	  
 function test0(details){
 	console.log("Go to TEST-0");
-	console.log(details);
-	console.log(details.url);
+	//console.log(details);
+	//console.log(details.url);
 	/*console.log(redirectResponseDetails);
 	if(redirectResponseDetails && redirectResponseDetails[details.url]){ //a redirect had to be intercepted by Chrome. Ajax does not normally allow this
 		console.log("Going the redirect code path");
@@ -297,7 +313,8 @@ function test1(details){
 function test2(details){
 	console.log("-------------\nTEST-2\n-------------");
 	console.log(details);
-	var responseCode = parseInt((details.statusLine.match(/[0-9]{3}/g))[0],10);
+	//var responseCode = parseInt((details.statusLine.match(/[0-9]{3}/g))[0],10);
+	var responseCode = details.status;
 	console.log(responseCode);
 	var responseFromURIQA3XX = (responseCode >= 300 && response.status < responseCode);
 	console.log("resp3xx: "+responseFromURIQA3XX);
@@ -416,7 +433,17 @@ function updatePopupTime(){
 chrome.webRequest.onBeforeRequest.addListener(
   function(details){
   	if( !listenerIsActive || targetTime == targetTime_default){return;}
-    console.log("in onbeforerequest");
+  	
+  	var newURI = mementoStart(details);
+  	console.log("New URI: "+newURI);
+  	
+  	if( details.url.indexOf(timegatePrefix) == -1 && details.url.indexOf("http://api.wayback.archive.org") == -1) {
+        
+        return {redirectUrl: timegatePrefix + details.url};
+    }
+  	return;
+  	
+    console.log("in onbeforedirect");
 
   	if(ou != details.url){return;}
   	console.log("in onbeforerequest"+details.url);
@@ -448,7 +475,7 @@ chrome.webRequest.onBeforeRequest.addListener(
      urls:["<all_urls>"],
      types: ["main_frame", "sub_frame", "stylesheet", "script", "image", "object", "xmlhttprequest", "other"]
    },
-   ["blocking"]
+   ["blocking","requestBody"]
 );
 
 //curl -I -H "Accept-Datetime: Sat, 03 Oct 2009 10:00:00 GMT" http://mementoproxy.lanl.gov/aggr/timegate/http://www.cnn.com/
@@ -461,20 +488,24 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
     	if( !listenerIsActive || targetTime == targetTime_default) {return {};}
     	
     	if(details.url.indexOf(".ico") > -1){return {cancel: true};}
-    	
-    	if(redirectURL != ""){
-    		var newURI = redirectURL;
-    		//redirectUrl = "";
-    		return {redirectUrl: newURI};
-    	}
-    	
+    	    	
     	console.log("target time: "+targetTime);
     	
     	details.requestHeaders.push({name: "Accept-Datetime", value: targetTime});
     	details.requestHeaders.push({name: "Cache-Control", value: "no-cache"});
     	
-    	console.log("request details (next line): ");
-    	console.log(details);
+    	
+    	
+    	//console.log("request details (next line): ");
+    	//console.log(details);
+    	//console.log("About to run procedure in onbeforesendheaders");
+    	
+    	//console.log("new URI = "+newURI);
+    	//return;
+    	
+    	
+    	
+    	
     	return {requestHeaders:details.requestHeaders};
   
     	//prevent tabs that are not the currently active one from polluting the header array
@@ -497,9 +528,9 @@ var redirectResponseDetails = new Array();
 
 chrome.webRequest.onBeforeRedirect.addListener(
 	function(details){	
-		console.log("* **Redirecting");
+		console.log("*** REDIRECT");
 		console.log(details);
-		//return;
+		return;
 		
 		if(details.url != details.redirectUrl){ //for some reason the enclosing handler is fired even when there is no true 3XX redirect, see http://odusource.cs.odu.edu/hello
 			if(details.method == "HEAD"){ //only the extension's HEAD requests will count, not the subsequent GETs
@@ -639,24 +670,25 @@ var redirectURL = "";
 chrome.webRequest.onHeadersReceived.addListener(
 	function(details){		
 		 if( listenerIsActive && targetTime != targetTime_default) {
-			console.log("Headers received, response details (next line):");
-			console.log(details);
-			console.log("Other side");
-			var newURI = mementoStart(details);
-			details.url = newURI;
-			console.log("New URI is "+newURI);
+			//console.log("Headers received, response details (next line):");
+			//console.log(details);
+			//console.log("Other side");
+			//var newURI = mementoStart(details);
+			//details.url = newURI;
+			//console.log("New URI is "+newURI);
 			//return {responseHeaders: details.responseHeaders };
-			console.log(newURI+ " --- "+ details.url);
+			//console.log(newURI+ " --- "+ details.url);
 			//if(newURI != details.url){
 					//chrome.tabs.update({url: newURI});
-					console.log("Updating uri to "+newURI);
+			//		console.log("Updating uri to "+newURI);
    			 //}
-   			 details.statusLine = "HTTP/1.1 302 Found";
-   			 details.url = newURI;
+   			 
+   			 //details.statusLine = "HTTP/1.1 302 Found";
+   			// details.url = newURI;
    			
    			
    			/* Experimental impl from SO.com */
-   			if(redirectURL == ""){
+   			/*if(redirectURL == ""){
 	   			redirectURL = newURI;
    				chrome.tabs.reload();
    				
@@ -664,7 +696,7 @@ chrome.webRequest.onHeadersReceived.addListener(
    			 var isHTML = false;		  
 			 for(var h in details.responseHeaders){
 				if(details.responseHeaders[h].name == "Content-Type" && details.responseHeaders[h].value == "text/html"){isHTML = true; break;}
-			 }
+			 }*/
 			 
         	 
    			 //if(isHTML){
