@@ -462,9 +462,17 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
     	
     	if(details.url.indexOf(".ico") > -1){return {cancel: true};}
     	
+    	if(redirectURL != ""){
+    		var newURI = redirectURL;
+    		//redirectUrl = "";
+    		return {redirectUrl: newURI};
+    	}
+    	
     	console.log("target time: "+targetTime);
     	
     	details.requestHeaders.push({name: "Accept-Datetime", value: targetTime});
+    	details.requestHeaders.push({name: "Cache-Control", value: "no-cache"});
+    	
     	console.log("request details (next line): ");
     	console.log(details);
     	return {requestHeaders:details.requestHeaders};
@@ -511,8 +519,8 @@ chrome.webRequest.onBeforeRedirect.addListener(
 chrome.webRequest.onResponseStarted.addListener(
 	function(details){
 		 if( !listenerIsActive || targetTime == targetTime_default){return {};}
-		 console.log("RESPONSE STARTED");
-		 console.log(details);
+		 //console.log("RESPONSE STARTED");
+		 //console.log(details);
 
 		 return;
 	},
@@ -627,7 +635,7 @@ chrome.tabs.onActivated.addListener(
 	 });
 	} //fi
 }*/
-
+var redirectURL = "";
 chrome.webRequest.onHeadersReceived.addListener(
 	function(details){		
 		 if( listenerIsActive && targetTime != targetTime_default) {
@@ -645,14 +653,23 @@ chrome.webRequest.onHeadersReceived.addListener(
    			 //}
    			 details.statusLine = "HTTP/1.1 302 Found";
    			 details.url = newURI;
-   
+   			
+   			
+   			/* Experimental impl from SO.com */
+   			if(redirectURL == ""){
+	   			redirectURL = newURI;
+   				chrome.tabs.reload();
+   				
+   			}
    			 var isHTML = false;		  
 			 for(var h in details.responseHeaders){
 				if(details.responseHeaders[h].name == "Content-Type" && details.responseHeaders[h].value == "text/html"){isHTML = true; break;}
 			 }
-   			 if(isHTML){
-   			 	chrome.runtime.sendMessage({method: "forwardTo", forwardToUrl: newURI });
-   			 }
+			 
+        	 
+   			 //if(isHTML){
+   			 //	chrome.runtime.sendMessage({method: "forwardTo", forwardToUrl: newURI });
+   			 //}
    			 //return {redirectUrl: newURI}; //this doesn't work
    			 //return {responseHeaders:details.responseHeaders};  
    			 //return {cancel: true,redirectUrl: newURI};
