@@ -113,6 +113,7 @@ function mementoStart(details){
 	console.log("-------------\nSTART:\n-------------");
 	console.log("HEAD URI-Q ("+details.url+") with Accept-Datetime value "+targetTime);
 	//return test0(details);
+	var test0Result;
 	xhr = $.ajax({
 		type:"HEAD",
 		url:details.url,
@@ -126,15 +127,15 @@ function mementoStart(details){
 				console.log("Caught 200!");
 			}
 		}*/
-	}).done(//test0)
-	function(d,t,x){
+	}).done( //test0)
+	  function(d,t,x){
 		//console.log(x.getAllResponseHeaders());
 		console.log(d);
 		console.log(t);
 		console.log(x);
 		console.log(x.getAllResponseHeaders());
 		x.url = details.url;
-		test0(x);
+		test0Result = test0(x);
 	})
 	.fail(function(d) { 
 		console.log("Ajax Request error"); 
@@ -147,7 +148,12 @@ function mementoStart(details){
 		console.log(b);
 		console.log(c);
 		console.log(c.getAllResponseHeaders());
+		xhr = null;
 	});
+	//console.log("xhr = ");
+	//console.log(xhr.getAllResponseHeaders());
+	//console.log("Test0 Result: "+test0Result);
+	return test0Result;
 }
 
 
@@ -434,14 +440,41 @@ chrome.webRequest.onBeforeRequest.addListener(
   function(details){
   	if( !listenerIsActive || targetTime == targetTime_default){return;}
   	
+  	console.log("A URL is attempting to be accessed: "+details.url);
+  	if(
+  	 details.url.match(/http(.*)[0-9]{14}(.*)http(.*)/g) ||
+  	 details.url.match(/webcitation/g)
+  	){ //memento URI successfully obtained, let pass through
+  		console.log("SUCCESSX in getting memento: "+details.url);
+  		return {};
+  	}else {
+  		console.log("STILLPROCESSINGX memento: "+details.url);
+  	}
+  	
   	var newURI = mementoStart(details);
   	console.log("New URI: "+newURI);
+  	if(newURI != details.url){
+  		var mementoURI = newURI.match(/http(.*)[0-9]{14}(.*)http/g);
+  		if( newURI.indexOf(timegatePrefix) != -1 &&
+  			mementoURI && mementoURI.length >= 1
+  			){
+  				console.log("Replacing timegate in URI: "+newURI);
+  				return {redirectUrl: newURI.replace(timegatePrefix,"")};}
+  		console.log("REDIRECTX: "+details.url+" --> "+newURI);
+  		return {redirectUrl: newURI};
+  	}else {
+  		console.log("SAMEX: "+details.url+" === "+newURI);
+  	}
   	
-  	if( details.url.indexOf(timegatePrefix) == -1 && details.url.indexOf("http://api.wayback.archive.org") == -1) {
+  	
+  	
+  	return {};
+  	
+  	//if( details.url.indexOf(timegatePrefix) == -1 && details.url.indexOf("http://api.wayback.archive.org") == -1) {
         
-        return {redirectUrl: timegatePrefix + details.url};
-    }
-  	return;
+    //    return {redirectUrl: timegatePrefix + details.url};
+    //}
+  	
   	
     console.log("in onbeforedirect");
 
