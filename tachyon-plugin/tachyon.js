@@ -118,15 +118,8 @@ function mementoStart(details){
 		type:"HEAD",
 		url:details.url,
 		headers: {'Accept-Datetime':targetTime},//,'Access-Control-Expose-Headers': 'Location'
-		async: false/*,
-		statusCode: {
-			302: function(){
-				console.log("Caught 302!");
-			},
-			200: function(){
-				console.log("Caught 200!");
-			}
-		}*/
+		async: false,
+		timeout: 3000
 	}).done( //test0)
 	  function(d,t,x){
 		//console.log(x.getAllResponseHeaders());
@@ -147,7 +140,7 @@ function mementoStart(details){
 		console.log(a);
 		console.log(b);
 		console.log(c);
-		console.log(c.getAllResponseHeaders());
+		if(a!="error"){console.log(c.getAllResponseHeaders());}
 		xhr = null;
 	});
 	//console.log("xhr = ");
@@ -440,6 +433,8 @@ chrome.webRequest.onBeforeRequest.addListener(
   function(details){
   	if( !listenerIsActive || targetTime == targetTime_default){return;}
   	
+  	if(details.url.indexOf("chrome-extension://") != -1){return {};}
+  	
   	console.log("A URL is attempting to be accessed: "+details.url);
   	if(
   	 details.url.match(/http(.*)[0-9]{14}(.*)http(.*)/g) ||
@@ -450,58 +445,29 @@ chrome.webRequest.onBeforeRequest.addListener(
   	}else {
   		console.log("STILLPROCESSINGX memento: "+details.url);
   	}
-  	
-  	var newURI = mementoStart(details);
-  	console.log("New URI: "+newURI);
-  	if(newURI != details.url){
-  		var mementoURI = newURI.match(/http(.*)[0-9]{14}(.*)http/g);
-  		if( newURI.indexOf(timegatePrefix) != -1 &&
-  			mementoURI && mementoURI.length >= 1
-  			){
-  				console.log("Replacing timegate in URI: "+newURI);
-  				return {redirectUrl: newURI.replace(timegatePrefix,"")};}
-  		console.log("REDIRECTX: "+details.url+" --> "+newURI);
-  		return {redirectUrl: newURI};
-  	}else {
-  		console.log("SAMEX: "+details.url+" === "+newURI);
-  	}
-  	
-  	
-  	
-  	return {};
-  	
-  	//if( details.url.indexOf(timegatePrefix) == -1 && details.url.indexOf("http://api.wayback.archive.org") == -1) {
-        
-    //    return {redirectUrl: timegatePrefix + details.url};
-    //}
-  	
-  	
-    console.log("in onbeforedirect");
-
-  	if(ou != details.url){return;}
-  	console.log("in onbeforerequest"+details.url);
-  	console.log(details);
-	//console.log("Changing "+details.url+" to "+(timegatePrefix + details.url));
-    x = beginContentNegotiation(details.url); //testing);
-    console.log(details.url+" resolved to "+x);
-    
-    if(x == ""){return;}
-    return;
-	//prevent tabs that are not the currently active one from polluting the header array
-  	/*var requestIsFromCurrentTab = false;
-    chrome.tabs.getSelected(null, function(selectedTab) {
-  	  requestIsFromCurrentTab = (details.tabId==selectedTab.id);
-    });
-    if(!requestIsFromCurrentTab){return;}
-    */
-	return; //  Not confident that this function is doing anything useful or conducive to the procedure at the moment.
+  	try {
+		var newURI = mementoStart(details);
+		console.log("New URI: "+newURI);
+		if(newURI != details.url){
+			var mementoURI = newURI.match(/http(.*)[0-9]{14}(.*)http/g);
+			if( newURI.indexOf(timegatePrefix) != -1 &&
+				mementoURI && mementoURI.length >= 1
+				){
+					console.log("Replacing timegate in URI: "+newURI);
+					return {redirectUrl: newURI.replace(timegatePrefix,"")};}
+			console.log("REDIRECTX: "+details.url+" --> "+newURI);
+			return {redirectUrl: newURI};
+		}else {
+			//console.log("SAMEX: "+details.url+" === "+newURI);
+		}
 	
-    if( !listenerIsActive || targetTime == targetTime_default) {return {};}// Pass through if the plugin is inactive.
-	if(details.url.indexOf("chrome://") != -1){return {};}
+		return {};
 	
-	var uriQwithTimegate = details.url.replace("?","%3F");
-	//console.log("rduri: "+uriQwithTimegate+ " time:"+targetTime);
-	return {redirectUrl: uriQwithTimegate};
+		if(details.url.indexOf("chrome://") != -1){return {};}
+	}catch(err){
+		console.log("An error happened! It was likely the result of the Ajax Request failing");
+		return {};	
+	}
   },
   
   {
@@ -538,7 +504,8 @@ chrome.webRequest.onBeforeSendHeaders.addListener(
     	
     	
     	
-    	
+    	console.log("About to send request with Accept-Datetime headers for "+details.url+" headers: ");
+    	console.log(details.requestHeaders);
     	return {requestHeaders:details.requestHeaders};
   
     	//prevent tabs that are not the currently active one from polluting the header array
@@ -563,7 +530,7 @@ chrome.webRequest.onBeforeRedirect.addListener(
 	function(details){	
 		console.log("*** REDIRECT");
 		console.log(details);
-		return;
+		/*return;
 		
 		if(details.url != details.redirectUrl){ //for some reason the enclosing handler is fired even when there is no true 3XX redirect, see http://odusource.cs.odu.edu/hello
 			if(details.method == "HEAD"){ //only the extension's HEAD requests will count, not the subsequent GETs
@@ -571,7 +538,7 @@ chrome.webRequest.onBeforeRedirect.addListener(
 				console.log("***** onbeforeredirect");
 				console.log(details);
     		}
-    	}
+    	}*/
     },
     {
      urls:["http://*/*", "https://*/*"],
@@ -583,6 +550,7 @@ chrome.webRequest.onBeforeRedirect.addListener(
 chrome.webRequest.onResponseStarted.addListener(
 	function(details){
 		 if( !listenerIsActive || targetTime == targetTime_default){return {};}
+		 console.log("Response started for "+details.url);
 		 //console.log("RESPONSE STARTED");
 		 //console.log(details);
 
@@ -703,6 +671,8 @@ var redirectURL = "";
 chrome.webRequest.onHeadersReceived.addListener(
 	function(details){		
 		 if( listenerIsActive && targetTime != targetTime_default) {
+		 	console.log("Received headers for "+details.url+"! :");
+		 	console.log(details.responseHeaders);
 			//console.log("Headers received, response details (next line):");
 			//console.log(details);
 			//console.log("Other side");
