@@ -180,7 +180,9 @@ function test0(details){
 		URI_R = details.url; console.log("URI-R = URI-Q");
 	}
 	console.log("Go to TEST-1");
-	return test1(details);
+	var ret = test1(details);
+	console.log("Bubbled up to test 0, returning!");
+	return ret;
 }
 		
 	/*function test0_redirect(){
@@ -305,7 +307,9 @@ function test1(details){
 		console.log("URI-Q: "+details.url);
 	}else {
 		console.log("Go to TEST-2");
-		return test2(details);
+		var ret = test2(details);
+		console.log("Bubbled up to test 1, returning!");
+		return ret;
 	}
 }
 		
@@ -317,10 +321,12 @@ function test2(details){
 	console.log(responseCode);
 	var responseFromURIQA3XX = (responseCode >= 300 && response.status < responseCode);
 	console.log("resp3xx: "+responseFromURIQA3XX);
-	if(responseFromURIQA3XX){follow(details);}
+	if(responseFromURIQA3XX){console.log("FOLLOWING!!!!");follow(details);}
 	else {
 		console.log("Go to TEST-3");
-		return test3(details,responseCode);
+		var ret = test3(details,responseCode);
+		console.log("Bubbled up to test 2, returning!");
+		return ret;
 	}
 }
 		
@@ -331,27 +337,20 @@ function test3(details,responseCode){
    }else {
     console.log("TG_FLAG && responseCode >= 400 && responseCode < 600: NO, respCode: "+responseCode);
     console.log("Go to TEST-4");
-	return test4(details);
+	var ret = test4(details);
+	console.log("Bubbled up to test 3, returning!");
+	return ret;
    }
 }
 
 function test4(details){
 	console.log("-------------\nTEST-4\n-------------");
-	var responseHasTimegateLink = false;
-	var responseTimegateLinkValue = "";
-	for(var h in details.responseHeaders){
-		if(details.responseHeaders[h].name == "Link"){
-			responseHasTimegateLink = true; 
-			responseTimegateLinkValue = details.responseHeaders[h].value;
-			break;
-		}
-	}
-	
+	var responseTimegateLinkValue = details.getResponseHeader("Link");
+	console.log(details.getResponseHeader("LinkX"));
 	
 	//get link HTTP header, parse out rel="timegate", if it exists, set boolean on next line (hard-coded for now)
 	console.log("Response Timegate Link Value: "+responseTimegateLinkValue);
 	var responseHasTimegateLinkPointingAtURI_G = 
-		responseHasTimegateLink &&
 		responseTimegateLinkValue.match(/rel=(.*)timegate/) != null;
 
 	URI_G = "http://api.wayback.archive.org/memento/timegate/"+details.url;
@@ -364,7 +363,8 @@ function test4(details){
 		URI_G = timegateRegExResult[1];
 		console.log("URI-Q ("+details.url+") = URI-G ("+URI_G+")");
 		URI_Q = URI_G;
-		mementoStart(); //should this be here?
+		return URI_Q;
+		//mementoStart(); //should this be here?
 	}else {
 		var preferredTimegate = localStorage["preferredTimegate"];
 		//if(!preferredTimegate){	//this value hasn't been set by the user. Set it here.
@@ -465,7 +465,9 @@ chrome.webRequest.onBeforeRequest.addListener(
 	
 		if(details.url.indexOf("chrome://") != -1){return {};}
 	}catch(err){
-		console.log("An error happened! It was likely the result of the Ajax Request failing");
+		console.log("An error happened! It was likely the result of the Ajax Request failing, error contents next line:");
+		console.log(err.message);
+		console.log("Line "+err.lineNumber);
 		return {};	
 	}
   },
