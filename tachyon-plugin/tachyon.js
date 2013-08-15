@@ -14,6 +14,9 @@ var originalURIQ = "";
 var xhr;
 var resourceMementos = [];//new Array();
 
+
+var debug = false; // toggle for debug mode
+
 /* This is used to record any useful information about each tab, 
  * determined from the headers during download.
  */
@@ -25,9 +28,10 @@ function toggleActive(tab) {
         iconChangeTimout = null;
     } else {
         listenerIsActive = true;
+        chrome.webRequest.handlerBehaviorChanged(); //clear the cache for handlers
         chrome.browserAction.setIcon({path: "icon-on-19.png"});
         chrome.browserAction.setPopup({popup: "popup.html"});
-        chrome.tabs.reload(tab.id, {'bypassCache': true});
+        //chrome.tabs.reload(tab.id, {'bypassCache': true});
     }
 }
 
@@ -70,7 +74,7 @@ chrome.extension.onMessage.addListener(function (msg, sender, sendResponse) {
 function mementoStart(details){
     //console.log("-------------\nSTART:\n-------------");
     //console.log("HEAD URI-Q ("+details.url+") with Accept-Datetime value "+targetTime);
-    console.log("Negotiating for "+details.url);
+    if(debug){console.log("Negotiating for "+details.url);}
     var test0Result;
     xhr = $.ajax({
         type:"HEAD",
@@ -90,6 +94,8 @@ function mementoStart(details){
         test0Result = test0(x);
     })
     .fail(function(d) { 
+    	console.log("Ajax failed for:");
+    	console.log(d);
         //console.log("Ajax Request error"); 
         //console.log(d);
         //console.log(d.getAllResponseHeaders());
@@ -111,32 +117,39 @@ function mementoStart(details){
 var TG_FLAG;
       
 function test0(details){
-    //console.log("Go to TEST-0");
+    if(debug){console.log("Go to TEST-0");}
     
     var containsVaryAcceptDatetime = false;
     
     for(var h in details.responseHeaders){
         if (details.responseHeaders[h].name == "Vary"){containsVaryAcceptDatetime = true; break;}
     }
-    //console.log("-------------\nTEST-0\n-------------");
-    //console.log("Response from URI-Q contain Vary: accept-datetime? "+containsVaryAcceptDatetime);
-    ////console.log(response.getAllResponseHeaders());
+    
+    if(debug){
+    	console.log("-------------\nTEST-0\n-------------");
+    	console.log("Response from URI-Q contain Vary: accept-datetime? "+containsVaryAcceptDatetime);
+    	//console.log(response.getAllResponseHeaders());
+    }
+    
     if (containsVaryAcceptDatetime){
         TG_FLAG = true; //console.log("TG-FLAG = TRUE");
         URI_R = details.url; //console.log("URI-R = URI-Q");
     }
-    //console.log("Go to TEST-1");
+    if(debug){console.log("Go to TEST-1");}
     var ret = test1(details);
-    //console.log("Bubbled up to test 0, returning!");
+    if(debug){console.log("Bubbled up to test 0, returning!");}
     return ret;
 }
         
 var mCollection = null;
     
 function follow(details){
-    //console.log("-------------\nFOLLOW\n-------------");
-    //URI_Q = loc;
-    //console.log("URI_Q = Location (value of HTTP header) = "+details.url);
+    if(debug){
+    	console.log("-------------\nFOLLOW\n-------------");
+    	//URI_Q = loc;
+    	console.log("URI_Q = Location (value of HTTP header) = "+details.url);
+    }
+    
     //var fauxDetails = {url: loc};
 	return details.url;
     //console.log("Going to START");
@@ -166,7 +179,7 @@ function getNextPrevMementos(linkHeader){
 
 
 function test1(details){
-    //console.log("-------------\nTEST-1\n-------------");
+	if(debug){console.log("-------------\nTEST-1\n-------------");}
     
     var uriQIsAMemento = false;
     for(var h in details.responseHeaders){
@@ -178,7 +191,8 @@ function test1(details){
     if (details.status == 200 && details.url.match(/[0-9]{14}/g)){uriQIsAMemento = true;}
     
 
-    //console.log("URI-Q is a Memento? "+uriQIsAMemento);
+    if(debug){console.log("URI-Q is a Memento? "+uriQIsAMemento);}
+    
     if (uriQIsAMemento){
         //console.log("We found the memento! : "+details.url);
         return details.url;
@@ -187,11 +201,11 @@ function test1(details){
         }catch(err){}*/
         
         TG_FLAG = false; 
-        //console.log("  Setting TG-FLAG = FALSE");
+        if(debug){console.log("  Setting TG-FLAG = FALSE");}
         URI_R = ""; 
-        //console.log("  Setting URI-R = blank");
+        if(debug){console.log("  Setting URI-R = blank");}
         var responseFromURIQA3XX = (response.status >= 300 && response.status < 400);
-        //console.log(" Is response from URI-Q a 3xx: "+responseFromURIQA3XX+" "+response.status);
+        if(debug){console.log(" Is response from URI-Q a 3xx: "+responseFromURIQA3XX+" "+response.status);}
         if (responseFromURIQA3XX){follow(response);}
         else {
             displayMemento();
@@ -200,36 +214,43 @@ function test1(details){
         
         //console.log("URI-Q: "+details.url);
     }else {
-        //console.log("Go to TEST-2");
+        if(debug){console.log("Go to TEST-2");}
         var ret = test2(details);
-        //console.log("Bubbled up to test 1, returning!");
+        if(debug){console.log("Bubbled up to test 1, returning!");}
         return ret;
     }
 }
 
      
 function test2(details){
-    //console.log("-------------\nTEST-2\n-------------");
-    //console.log(details);
+    if(debug){
+    	console.log("-------------\nTEST-2\n-------------");
+    	console.log(details);
+    }
+    
     //var responseCode = parseInt((details.statusLine.match(/[0-9]{3}/g))[0],10);
     var responseCode = details.status;
-    //console.log(responseCode);
+    if(debug){console.log(responseCode);}
     var responseFromURIQA3XX = (responseCode >= 300 && response.status < responseCode);
     //console.log("Is response a 3xx?: "+responseFromURIQA3XX + "   code: "+responseCode);
     //console.log("Iterating through all urls that were 3xxs, l="+test2_300.length);
     for(var i in test2_300){
-    	if(details.url+"::"+test2_300[i]){
-    		//console.log(":: A REDIRECT HAS OCCURED!");
+    	if(debug){console.log("Checking if "+test2_300[i]+" is "+details.url);}
+    	if(details.url == test2_300[i]){
+    		if(debug){console.log(":: A REDIRECT HAS OCCURED!");}
     		responseFromURIQA3XX = true;
     	}
     }
     //console.log("iterating done");
     
     if (responseFromURIQA3XX){
-    	//console.log("FOLLOWING!!!!");
+    	if(debug){
+    		console.log("FOLLOWING!!!!");
+    		
+    	}
     	return follow(details);
     }else {
-        //console.log("Go to TEST-3");
+        if(debug){console.log("Go to TEST-3");}
         var ret = test3(details,responseCode);
         //console.log("Bubbled up to test 2, returning!");
         return ret;
@@ -237,12 +258,15 @@ function test2(details){
 }
         
 function test3(details,responseCode){
-   //console.log("-------------\nTEST-3\n-------------");
+   if(debug){console.log("-------------\nTEST-3\n-------------");}
    if (TG_FLAG && responseCode >= 400 && responseCode < 600){
     alert("TimeGate or Memento error. How does the user agent handle this?");
    }else {
-    //console.log("TG_FLAG && responseCode >= 400 && responseCode < 600: NO, respCode: "+responseCode);
-    //console.log("Go to TEST-4");
+    if(debug){
+    	console.log("TG_FLAG && responseCode >= 400 && responseCode < 600: NO, respCode: "+responseCode);
+    	console.log("Go to TEST-4");
+    }
+    
     var ret = test4(details);
     //console.log("Bubbled up to test 3, returning!");
     return ret;
@@ -252,7 +276,7 @@ function test3(details,responseCode){
 
 
 function test4(details){
-    //console.log("-------------\nTEST-4\n-------------");
+    if(debug){console.log("-------------\nTEST-4\n-------------");}
     var responseTimegateLinkValue = details.getResponseHeader("Link");
     
     //get link HTTP header, parse out rel="timegate", if it exists, set boolean on next line (hard-coded for now)
@@ -276,11 +300,8 @@ function test4(details){
     var URI_G, URI_Q;
 	//console.log("154");
     if (responseHasTimegateLinkPointingAtURI_G){
-    	//console.log("in responsehastimegatelinkpsdfsdfds...");
         var timegateRegExResult = responseTimegateLinkValue.match("<(.*)>");
-        //console.log("2");
         var mementoInLinkHeaderValue = responseTimegateLinkValue.match(/[^\s|^,^<]+;rel=\"memento\";/g);
-        //console.log("3");
         
         //just a test to see if we can extract the memento URI from the aggregate link header
         if (mementoInLinkHeaderValue){
@@ -306,7 +327,6 @@ function test4(details){
         return URI_Q;
         //mementoStart(); //should this be here?
     }else {
-    	//console.log("445");
         var preferredTimegate = localStorage["preferredTimegate"];
         //if (!preferredTimegate){    //this value hasn't been set by the user. Set it here.
         //var    preferredTimegate = "http://mementoproxy.cs.odu.edu/aggr/timegate/";
@@ -353,7 +373,9 @@ function updatePopupTime(){
    VVVVVVVVVVVVVVVVVVVVVVVVVVVVV */
 chrome.webRequest.onBeforeRequest.addListener(
   function(details){
-      if (!listenerIsActive || targetTime == targetTime_default){return;}
+  	if(debug){console.log("X"+details.url);}
+      if (!listenerIsActive){console.log(" * Listener is not active"); return;}
+      if(targetTime == targetTime_default){console.log(" * targettime == targettime_default"); return;}
       
       if (details.url.indexOf("chrome-extension://") != -1){return {};}
       
@@ -380,10 +402,11 @@ chrome.webRequest.onBeforeRequest.addListener(
             //console.log("REDIRECTX: "+details.url+" --> "+newURI);
             return {redirectUrl: newURI};
         }else {
+        	if(debug){console.log("NEW URI");}
             ////console.log("SAMEX: "+details.url+" === "+newURI);
         }
-    
-        return {};
+    	if(debug){console.log("DONE with "+details.url);}
+        //return {};
     
         if (details.url.indexOf("chrome://") != -1){return {};}
     }catch(err){
@@ -393,12 +416,19 @@ chrome.webRequest.onBeforeRequest.addListener(
         return {};    
     }
   },
-  
   {
      urls:["<all_urls>"],
      types: ["main_frame", "sub_frame", "stylesheet", "script", "image", "object", "xmlhttprequest", "other"]
    },
    ["blocking","requestBody"]
+);
+
+chrome.webRequest.onErrorOccurred.addListener(
+	function onErrorOccurred(details){
+		console.log(" --------- an error occured ----------");
+		console.log(details);	
+	},
+   {urls:["<all_urls>"]}
 );
 
 //curl -I -H "Accept-Datetime: Sat, 03 Oct 2009 10:00:00 GMT" http://mementoproxy.lanl.gov/aggr/timegate/http://www.cnn.com/
@@ -408,7 +438,6 @@ chrome.webRequest.onBeforeRequest.addListener(
  */
 chrome.webRequest.onBeforeSendHeaders.addListener(
     function(details) {
-    	console.log("X"+details.url);
         if (!listenerIsActive || targetTime == targetTime_default) {return {};}
         
         if (details.url.indexOf(".ico") > -1){return {cancel: true};}
@@ -479,9 +508,9 @@ chrome.webRequest.onResponseStarted.addListener(
          if (!listenerIsActive || targetTime == targetTime_default){return {};}
          
          if(details.fromCache){
-         	console.log(details.url+" pulled from cache!");
+         	if(debug){console.log(details.url+" pulled from cache!");}
          }else {
-         	console.log(details.url+" NOT pulled from cache");
+         	if(debug){console.log(details.url+" NOT pulled from cache");}
          }
          //console.log("Response started for "+details.url);
          ////console.log("RESPONSE STARTED");
