@@ -3,7 +3,7 @@
    "name": "Tachyon - Memento for Google Chrome™",
    "version": "0.2013.9.16",
    "background": {
-       "scripts": ["js/jquery-2.0.0.min.js","tachyon.js"],
+       "scripts": ["js/jquery-2.0.3.min.map","js/jquery-2.0.3.min.js","tachyon.js"],
        "persistent": true
    },
    "icons": { 
@@ -23,7 +23,7 @@
     ],
     "content_scripts": [
     {
-    	"js": ["js/jquery-2.0.0.min.js", "content.js"],
+    	"js": ["js/jquery-2.0.3.min.map","js/jquery-2.0.3.min.js", "content.js"],
     	"matches": ["<all_urls>"]
     }
   	],
