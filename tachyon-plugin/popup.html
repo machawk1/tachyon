@@ -12,22 +12,29 @@
 		#datePickerUI, #topui {display: none;}
 		#loader {text-align: center; font-style: italic; width: 100%;}
 		#runTests {position: absolute; font-size: 10px; bottom: 0; right: 0;}
+		
+		#set_target_time {width: 100%; margin: 1.0em 0 1.0em 0;}
+		#disable_timetravel {vertical-align: middle; float: right; clear: both;}
+		#disable_timetravel img {float: left;}
+		
+		.setDateSuccess {color: green; text-transform: uppercase;}
+		.setDateFail {color: red;}
 	</style>
     <script type="text/javascript" src="js/jquery-2.0.3.min.js"></script>
-        <script type="text/javascript" src="jquery-ui-1.10.2.custom/js/jquery-ui-1.10.2.custom.min.js"></script>
-        <script type="text/javascript" src="jquery-ui-timepicker-addon.js"></script>
-        <script type="text/javascript" src="tachyon-popup.js"></script>
+	<script type="text/javascript" src="jquery-ui-1.10.2.custom/js/jquery-ui-1.10.2.custom.min.js"></script>
+	<script type="text/javascript" src="jquery-ui-timepicker-addon.js"></script>
+	<script type="text/javascript" src="tachyon-popup.js"></script>
 </head>
 <body style="font-size: 12px; width: 500px;">
   <p id="loading">Loading...</p>
+  <button id="disable_timetravel" type="button" class="ui-state-default ui-priority-primary ui-corner-all"><img src="images/cancel.png">Disable Tachyon</button>
   <div id="datePickerUI">
       <input type="text" name="alt_example_4_alt" id="alt_example_4_alt" value="" style="cursor: pointer; width: 100%;">
       <div id="dtwrapper"><div id="datepicker"></div></div>
       <div>
-        <button id="set_target_time" type="button" class="ui-state-default ui-priority-primary ui-corner-all">Set Time</button>
-        <button id="disable_timetravel" type="button" class="ui-state-default ui-priority-primary ui-corner-all">Disable</button>
+        <button id="set_target_time" type="button" class="ui-state-default ui-priority-primary ui-corner-all"><span>Set Time</span></button>
+     </div>
     </div>
-    </div>
-    <button id="runTests" type="button" >Run Tests</button>
+    <!--<button id="runTests" type="button" >Run Tests</button>-->
 </body>
 </html>

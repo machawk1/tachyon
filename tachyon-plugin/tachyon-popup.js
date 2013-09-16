@@ -18,6 +18,9 @@ $(document).ready(function(){
 	   );
 	  $("#datePickerUI, #topui").effect("fade","slow");
 	  $("#loading").hide();
+	  $(".button").button();
+	  
+	  
 	  
 	  /*updateNextPrevButtons();
 	  
@@ -91,7 +94,22 @@ $(document).ready(function(){
   		dt+= " GMT";
   	}
 
-    chrome.runtime.sendMessage({method: "setDate", tt: dt });
+    chrome.runtime.sendMessage({method: "setDate", tt: dt },function(response) {
+    	var startText = $("#set_target_time").text();
+    	 $('#set_target_time span').slideUp( 250, function () {
+    	 		if(response.result){
+    	 			$(this).parent().addClass('setDateSuccess');
+					$(this).text("Date set succeeded!").slideDown(250);
+				}else {
+					$(this).parent().addClass('setDateFail');
+					$(this).text("Date setting failed!").slideDown(250);
+				}
+			});
+			setTimeout(function() { 
+				$("#set_target_time span").text(startText);
+				$("#set_target_time").removeClass("setDateFail setDateSuccess")
+			 }, 2000);	
+    });
     //self.close();
   });
   $('#disable_timetravel').click(function (){ 

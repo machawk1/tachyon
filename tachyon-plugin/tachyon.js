@@ -58,6 +58,7 @@ chrome.extension.onMessage.addListener(function (msg, sender, sendResponse) {
    //chrome.tabs.getSelected(null, function(selectedTab) {
    //  beginContentNegotiation(timegatePrefix + selectedTab.url);
    //});
+        sendResponse({result: true});
         return true;
     }
     if (msg.disengageTimeGate) {
