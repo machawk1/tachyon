@@ -15,7 +15,7 @@ var xhr;
 var resourceMementos = [];//new Array();
 
 
-var debug = false; // toggle for debug mode
+var debug = true; // toggle for debug mode
 
 /* This is used to record any useful information about each tab, 
  * determined from the headers during download.
@@ -24,12 +24,12 @@ function toggleActive(tab) {
     if (listenerIsActive) {
         listenerIsActive = false;
         chrome.browserAction.setPopup({popup: ""});
-        chrome.browserAction.setIcon({path: "icon.png"});
+        chrome.browserAction.setIcon({path: "images/icon.png"});
         iconChangeTimout = null;
     } else {
         listenerIsActive = true;
         chrome.webRequest.handlerBehaviorChanged(); //clear the cache for handlers
-        chrome.browserAction.setIcon({path: "icon-on-19.png"});
+        chrome.browserAction.setIcon({path: "images/icon-on-19.png"});
         chrome.browserAction.setPopup({popup: "popup.html"});
         //chrome.tabs.reload(tab.id, {'bypassCache': true});
     }
@@ -553,15 +553,15 @@ function changeIcon(){
     }
 
     if (clockState == 45){
-        chrome.browserAction.setIcon({path:"mementoLogo-19px-30.png"});    
+        chrome.browserAction.setIcon({path:"images/mementoLogo-19px-30.png"});    
         clockState = 30;    
     }
     else if (clockState == 30){
-        chrome.browserAction.setIcon({path:"mementoLogo-19px-37_5.png"});
+        chrome.browserAction.setIcon({path:"images/mementoLogo-19px-37_5.png"});
         clockState = 375;
     }
     else if (clockState == 375){
-        chrome.browserAction.setIcon({path:"mementoLogo-19px-45.png"});
+        chrome.browserAction.setIcon({path:"images/mementoLogo-19px-45.png"});
         clockState = 45;
     }
     else {return;}
