@@ -1,7 +1,7 @@
 {
    "manifest_version": 2,
    "name": "Tachyon - Memento for Google Chrome™",
-   "version": "0.2013.9.16",
+   "version": "0.2013.9.19",
    "background": {
        "scripts": ["js/jquery-2.0.3.min.map","js/jquery-2.0.3.min.js","tachyon.js"],
        "persistent": true
